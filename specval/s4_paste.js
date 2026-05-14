@@ -52,4 +52,13 @@ t('pasted name invoked as fn-like macro after rescan',
   `#define foo_bar(x) [x]\n#define C(a,b) a##b\n#define D(a,b) C(a,b)\nD(foo,_bar)(7)`,
   `[7]`);
 
+// ## inside an object-like body — §6.10.5.5 applies to BOTH kinds. The
+// body must be routed through substitute() so the paste happens, not just
+// spliced verbatim into the stream.
+t('## in obj-like body is processed (not left as ##)',
+  `#define M m##M\nM`, `mM`);
+
+t('## in obj-like body forms valid pp-token',
+  `#define J pre##suf\nJ`, `presuf`);
+
 summary('§6.10.5.4 paste');

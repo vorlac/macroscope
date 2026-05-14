@@ -342,8 +342,12 @@ class Preprocessor {
       const macro = this.macros.get(tok.value);
 
       if (macro.kind === 'obj') {
+        // §6.10.5.5: ## processing happens for both object-like and function-
+        // like bodies. Route obj-like bodies through substitute() with empty
+        // params so any ## (or stray #) in the body is handled.
+        const substituted = this.substitute(macro.body, [], [], []);
         const newHide = new Set(tok.hide); newHide.add(macro.name);
-        const replacement = macro.body.map(b => ({
+        const replacement = substituted.map(b => ({
           ...b,
           hide: new Set([...(b.hide || []), ...newHide])
         }));
@@ -397,7 +401,16 @@ class Preprocessor {
 
       const substituted = this.substitute(macro.body, effectiveParams, allArgs, prescanned);
 
-      const newHide = new Set(tok.hide); newHide.add(macro.name);
+      // §6.10.5.6 / Prosser fn-like rule: invocation's hide-set is the
+      // intersection of the name token's and the closing-paren's hide-sets,
+      // plus the macro itself. The intersection is what lets `M(...)`
+      // invocations whose `)` came from outside M's body escape M's hide
+      // (so the FOR_EACH / END_END chain trick works), while keeping cycle
+      // painting intact when `(` and `)` are both inside the outer body.
+      const closeHide = tokens[closeIdx].hide || new Set();
+      const newHide = new Set();
+      for (const h of tok.hide) if (closeHide.has(h)) newHide.add(h);
+      newHide.add(macro.name);
       const final = substituted.map(t => ({
         ...t,
         hide: new Set([...(t.hide || []), ...newHide])
@@ -516,7 +529,10 @@ class Preprocessor {
       if (t.type === 'id') {
         const pi = paramIdx(t.value);
         if (pi >= 0) {
-          result.push(...cloneTokens(prescanned[pi]));
+          // §6.10.5.1: whitespace is not a preprocessing token. Strip wrapping
+          // ws on substitution so `M(  x  )` substitutes `x`, not `  x  ` —
+          // and an all-whitespace arg substitutes to nothing.
+          result.push(...cloneTokens(trimWs(prescanned[pi])));
           i++;
           continue;
         }

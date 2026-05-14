@@ -9,7 +9,7 @@
 //  tokens are no longer available for further replacement even if they are
 //  later (re)examined in contexts in which that macro name preprocessing token
 //  would otherwise have been replaced."
-const { t, summary } = require('./harness');
+const { t, tknown, summary } = require('./harness');
 
 // Direct self-reference is blocked permanently
 t('direct self-reference paints',
@@ -68,5 +68,62 @@ t('C(E) — one more rescan layer',
 #define F()A(42)
 C(E)`,
   `A(42)`);
+
+// Chaos PP / Boost FOR_EACH chain — the `)` of each step is a SOURCE token
+// (not from the inner macro's body), so its hide-set is empty. That makes the
+// intersection of name and close hides empty, and the chain escapes prior
+// macros' paint instead of being terminated by it. gcc / clang produce the
+// same.
+t('A→B chain expands all levels (hide-set intersection rule)',
+  `#define A(x) [x] B
+#define B(x) [x] A
+A(1)(2)(3)(4)(5)`,
+  `[1] [2] [3] [4] [5] B`);
+
+t('FOR_EACH-style chain with END terminator',
+  `#define END(...) END_(__VA_ARGS__)
+#define END_(...) __VA_ARGS__##_END
+#define A(x) [x] B
+#define B(x) [x] A
+#define A_END
+#define B_END
+END(A (1)(2)(3))`,
+  `[1] [2] [3]`);
+
+// Sanity check: even though the chain escapes paint, a pure cycle (where
+// the `(` and `)` are BOTH inside the outer body) must still paint.
+t('mutual fn-like cycle still paints despite intersection rule',
+  `#define A(x) B(x)
+#define B(x) A(x)
+A(1)`,
+  `A(1)`);
+
+// KNOWN GAP — Boost.PP EVAL/DEFER recursion. This pattern relies on gcc's
+// context-stack expansion model: when a macro M's expansion completes (i.e.
+// the scan exits M's body), M is removed from the active "expanding" set.
+// Macroscope uses Prosser-style per-token hide-sets, which accumulate
+// monotonically and never drop M — so when A_'s body produces `A`, that
+// new `A` token inherits A's hide via the intersection rule (because the
+// `)` of A_() also lives inside something descended from A's expansion).
+// Implementing this properly requires a structural rewrite of the
+// expansion engine to track macro-expansion lifetimes as a stack.
+//
+// Macroscope produces ~2 unblock levels and then paints A; gcc produces
+// ~40. Both implementations agree the chain TERMINATES correctly; they
+// disagree on how deep it iterates.
+tknown('Boost.PP EVAL/DEFER recursion (40+ levels)',
+  `#define EVAL(...) EVAL1(EVAL1(EVAL1(__VA_ARGS__)))
+#define EVAL1(...) EVAL2(EVAL2(EVAL2(__VA_ARGS__)))
+#define EVAL2(...) EVAL3(EVAL3(EVAL3(__VA_ARGS__)))
+#define EVAL3(...) __VA_ARGS__
+#define EMPTY()
+#define DEFER(id) id EMPTY()
+#define A(x) [x] DEFER(B_)()(x+1)
+#define B(x) [x] DEFER(A_)()(x+1)
+#define A_() A
+#define B_() B
+EVAL(A(0))`,
+  '~40 levels of [n+1+...+1] terminated by deferred call',
+  '[0] [0+1] A(0+1+1) — only 2 levels before per-token hide blocks A');
 
 summary('§6.10.5.6 rescan & paint');

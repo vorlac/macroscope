@@ -35,4 +35,15 @@ function summary(area) {
   }
 }
 
-module.exports = { t, texact, summary };
+// Document a known gap without failing the suite. Use sparingly — only for
+// behaviors we've explicitly chosen not to implement (e.g. patterns that
+// require a context-stack expansion model). Prints a [known-gap] line.
+function tknown(name, source, expected, gotOverride) {
+  console.log(`  [known-gap] ${name}`);
+  console.log(`    expected: ${JSON.stringify(expected)}`);
+  if (gotOverride !== undefined) {
+    console.log(`    current:  ${JSON.stringify(gotOverride)}`);
+  }
+}
+
+module.exports = { t, texact, tknown, summary };

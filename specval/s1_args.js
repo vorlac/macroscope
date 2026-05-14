@@ -41,4 +41,11 @@ t('arity too few → not expanded',
 t('fn-like without ( emits as identifier',
   `#define F(x) [x]\nF + 1`, `F + 1`);
 
+// Whitespace-only arg is an empty arg (whitespace is not a pp-token).
+// Substituting it should drop wrapping ws too.
+t('whitespace-only arg substitutes to nothing',
+  `#define F(x) [x]\nF(   )`, `[]`);
+t('arg with wrapping ws strips the wrapping ws on substitution',
+  `#define F(x) [x]\nF(  hi  )`, `[hi]`);
+
 summary('§6.10.5.1 arg parsing');
