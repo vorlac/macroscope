@@ -1,0 +1,11 @@
+# Editor / OS scratch
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Test runner temp
+specval/.tmp/

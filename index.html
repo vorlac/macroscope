@@ -1,0 +1,2611 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>macroscope — C/C++ preprocessor step visualizer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-0: #0a0d12;
+            --bg-1: #11151c;
+            --bg-2: #161b24;
+            --bg-3: #1d242f;
+            --line: #232b38;
+            --line-bright: #2e3949;
+            --fg-0: #d8dee9;
+            --fg-1: #a4adbd;
+            --fg-2: #6c7689;
+            --fg-3: #444e5f;
+            --accent: #7dd3fc;
+            --accent-dim: #38516a;
+            --warm: #fbbf24;
+            --warm-dim: #6a4f1c;
+            --green: #86efac;
+            --green-dim: #2d4a36;
+            --rose: #fda4af;
+            --violet: #c4b5fd;
+            --error: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
+            background: var(--bg-0);
+            color: var(--fg-0);
+            font-family: 'JetBrains Mono', ui-monospace, monospace;
+            font-size: 13px;
+            overflow: hidden;
+        }
+
+        body {
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+        }
+
+        header {
+            border-bottom: 1px solid var(--line);
+            padding: 14px 22px 13px;
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 24px;
+            background: var(--bg-1);
+        }
+
+        header h1 {
+            margin: 0;
+            font-family: 'Fraunces', serif;
+            font-weight: 500;
+            font-size: 22px;
+            letter-spacing: -0.01em;
+            color: var(--fg-0);
+        }
+
+        header h1 .em {
+            font-style: italic;
+            color: var(--accent);
+            font-weight: 300;
+        }
+
+        header .subtitle {
+            color: var(--fg-2);
+            font-size: 11px;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        header .right {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        select {
+            background: var(--bg-2);
+            color: var(--fg-0);
+            border: 1px solid var(--line-bright);
+            padding: 6px 10px;
+            font-family: inherit;
+            font-size: 12px;
+            border-radius: 3px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        select:focus {
+            border-color: var(--accent);
+        }
+
+        button {
+            background: var(--bg-2);
+            color: var(--fg-0);
+            border: 1px solid var(--line-bright);
+            padding: 6px 14px;
+            font-family: inherit;
+            font-size: 12px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.12s ease;
+            letter-spacing: 0.02em;
+        }
+
+        button:hover:not(:disabled) {
+            background: var(--bg-3);
+            border-color: var(--accent-dim);
+        }
+
+        button:active:not(:disabled) {
+            transform: translateY(1px);
+        }
+
+        button.primary {
+            background: var(--accent);
+            color: var(--bg-0);
+            border-color: var(--accent);
+            font-weight: 600;
+        }
+
+        button.primary:hover {
+            background: #93dffe;
+            border-color: #93dffe;
+        }
+
+        button:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        main {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            overflow: hidden;
+        }
+
+        .pane-left {
+            border-right: 1px solid var(--line);
+            background: var(--bg-1);
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .pane-label {
+            padding: 10px 18px 8px;
+            font-size: 10px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--fg-2);
+            border-bottom: 1px solid var(--line);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .pane-label .count {
+            color: var(--fg-3);
+            font-weight: normal;
+        }
+
+        textarea {
+            flex: 1;
+            background: var(--bg-1);
+            color: var(--fg-0);
+            border: none;
+            padding: 14px 18px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.55;
+            resize: none;
+            outline: none;
+            tab-size: 4;
+        }
+
+        textarea::placeholder {
+            color: var(--fg-3);
+        }
+
+        .pane-left-footer {
+            padding: 12px 18px;
+            border-top: 1px solid var(--line);
+            display: flex;
+            gap: 8px;
+            background: var(--bg-1);
+        }
+
+        .pane-right {
+            background: var(--bg-0);
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .step-header {
+            padding: 14px 22px 12px;
+            border-bottom: 1px solid var(--line);
+            background: var(--bg-1);
+        }
+
+        .step-meta {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 6px;
+        }
+
+        .step-counter {
+            color: var(--accent);
+            font-size: 11px;
+            letter-spacing: 0.1em;
+            font-weight: 600;
+        }
+
+        .step-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            background: var(--bg-3);
+            border: 1px solid var(--line-bright);
+            color: var(--fg-1);
+            font-size: 10px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            border-radius: 2px;
+        }
+
+        .step-tag.kind-init {
+            color: var(--violet);
+            border-color: var(--violet);
+        }
+
+        .step-tag.kind-found {
+            color: var(--accent);
+            border-color: var(--accent-dim);
+        }
+
+        .step-tag.kind-arg {
+            color: var(--green);
+            border-color: var(--green-dim);
+        }
+
+        .step-tag.kind-subst {
+            color: var(--warm);
+            border-color: var(--warm-dim);
+        }
+
+        .step-tag.kind-rescan {
+            color: var(--rose);
+            border-color: #6a3a40;
+        }
+
+        .step-tag.kind-done {
+            color: var(--green);
+            border-color: var(--green);
+        }
+
+        .step-tag.kind-error {
+            color: var(--error);
+            border-color: var(--error);
+        }
+
+        .step-desc {
+            color: var(--fg-0);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .step-desc .mono {
+            color: var(--accent);
+            background: var(--bg-3);
+            padding: 1px 5px;
+            border-radius: 2px;
+            font-size: 12px;
+        }
+
+        .stream-container {
+            flex: 1;
+            overflow: auto;
+            padding: 22px 24px 30px;
+        }
+
+        .stream-label {
+            color: var(--fg-2);
+            font-size: 10px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .stream {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            line-height: 1.9;
+            color: var(--fg-0);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .tok {
+            display: inline;
+        }
+
+        .tok-id {
+            color: var(--fg-0);
+        }
+
+        .tok-macro {
+            color: var(--green);
+        }
+
+        .tok-num {
+            color: var(--violet);
+        }
+
+        .tok-str {
+            color: var(--warm);
+        }
+
+        .tok-punct {
+            color: var(--fg-1);
+        }
+
+        .tok-hash {
+            color: var(--rose);
+            font-weight: 600;
+        }
+
+        .tok-hashhash {
+            color: var(--rose);
+            font-weight: 600;
+        }
+
+        .tok-ws {
+            color: var(--fg-3);
+        }
+
+        .hi-active {
+            background: var(--accent-dim);
+            color: var(--accent) !important;
+            padding: 1px 3px;
+            margin: 0 -1px;
+            border-radius: 2px;
+            box-shadow: 0 0 0 1px var(--accent);
+        }
+
+        .hi-new {
+            background: var(--warm-dim);
+            color: var(--warm) !important;
+            padding: 1px 3px;
+            margin: 0 -1px;
+            border-radius: 2px;
+            box-shadow: 0 0 0 1px var(--warm);
+        }
+
+        .hi-args {
+            background: rgba(134, 239, 172, 0.08);
+            border-bottom: 1px dashed var(--green-dim);
+        }
+
+        .macro-table {
+            margin-top: 24px;
+            padding-top: 18px;
+            border-top: 1px dashed var(--line);
+        }
+
+        .macro-table-label {
+            color: var(--fg-2);
+            font-size: 10px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .macro-row {
+            display: grid;
+            grid-template-columns: 1fr 12px 2fr;
+            gap: 12px;
+            padding: 4px 0;
+            font-size: 12px;
+            color: var(--fg-1);
+            border-bottom: 1px dotted var(--line);
+        }
+
+        .macro-row:last-child {
+            border-bottom: none;
+        }
+
+        .macro-row .name {
+            color: var(--green);
+        }
+
+        .macro-row .arrow {
+            color: var(--fg-3);
+            text-align: center;
+        }
+
+        .macro-row .body {
+            color: var(--fg-1);
+        }
+
+        .err-banner {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #fca5a5;
+            padding: 10px 14px;
+            margin: 18px 24px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+
+        footer {
+            border-top: 1px solid var(--line);
+            background: var(--bg-1);
+            padding: 12px 22px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .step-controls {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .step-controls button {
+            padding: 5px 12px;
+            min-width: 36px;
+            font-weight: 600;
+        }
+
+        .scrubber-wrap {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .scrubber {
+            flex: 1;
+            height: 6px;
+            background: var(--bg-3);
+            border-radius: 3px;
+            position: relative;
+            cursor: pointer;
+            border: 1px solid var(--line-bright);
+        }
+
+        .scrubber-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 3px;
+            transition: width 0.15s ease;
+        }
+
+        .scrubber-handle {
+            position: absolute;
+            top: 50%;
+            width: 12px;
+            height: 12px;
+            background: var(--accent);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 0 3px var(--bg-1), 0 0 12px var(--accent);
+            pointer-events: none;
+            transition: left 0.15s ease;
+        }
+
+        .scrubber-tick {
+            position: absolute;
+            top: 50%;
+            width: 1px;
+            height: 8px;
+            background: var(--fg-3);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .scrub-label {
+            font-size: 11px;
+            color: var(--fg-2);
+            letter-spacing: 0.05em;
+            min-width: 70px;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-1);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--bg-3);
+            border-radius: 5px;
+            border: 2px solid var(--bg-1);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--line-bright);
+        }
+
+        .empty-state {
+            color: var(--fg-2);
+            padding: 60px 24px;
+            text-align: center;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        .empty-state .title {
+            color: var(--fg-0);
+            font-family: 'Fraunces', serif;
+            font-style: italic;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        kbd {
+            background: var(--bg-3);
+            border: 1px solid var(--line-bright);
+            border-bottom-width: 2px;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 10px;
+            color: var(--fg-1);
+            margin: 0 2px;
+        }
+
+        /* ============================================================
+     Editor (syntax-highlight overlay), split layout, expanded pane
+     ============================================================ */
+        main {
+            display: flex !important;
+            grid-template-columns: none !important;
+        }
+
+        .pane-left {
+            width: var(--left-w, 460px);
+            flex: 0 0 auto;
+            min-width: 320px;
+            max-width: 75vw;
+            border-right: none;
+        }
+
+        .pane-right {
+            flex: 1;
+            min-width: 320px;
+        }
+
+        .splitter {
+            flex: 0 0 5px;
+            background: var(--line);
+            cursor: col-resize;
+            position: relative;
+            transition: background 120ms ease;
+            user-select: none;
+        }
+
+        .splitter::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 1px;
+            height: 32px;
+            background: var(--fg-3);
+            border-radius: 1px;
+            opacity: 0.55;
+            transition: opacity 120ms, background 120ms;
+        }
+
+        .splitter:hover {
+            background: var(--accent-dim);
+        }
+
+        .splitter:hover::after {
+            opacity: 1;
+            background: var(--accent);
+        }
+
+        .splitter.dragging {
+            background: var(--accent);
+        }
+
+        .splitter.dragging::after {
+            opacity: 1;
+            background: var(--bg-0);
+        }
+
+        .input-panel {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 60%;
+            min-height: 160px;
+            border-bottom: 1px solid var(--line);
+            overflow: hidden;
+        }
+
+        .expanded-panel {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 40%;
+            min-height: 100px;
+            overflow: hidden;
+            background: var(--bg-1);
+        }
+
+        .pane-label .actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .toggle-btn {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--fg-3);
+            background: transparent;
+            border: 1px solid var(--line);
+            padding: 3px 7px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+
+        .toggle-btn:hover {
+            color: var(--fg-1);
+            border-color: var(--line-bright);
+        }
+
+        .toggle-btn.on {
+            color: var(--accent);
+            border-color: var(--accent-dim);
+            background: rgba(125, 211, 252, 0.06);
+        }
+
+        .editor-wrap {
+            flex: 1;
+            display: flex;
+            min-height: 0;
+            background: var(--bg-1);
+            position: relative;
+        }
+
+        .editor-gutter {
+            flex: 0 0 44px;
+            background: var(--bg-1);
+            color: var(--fg-3);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.55;
+            padding-top: 14px;
+            overflow: hidden;
+            border-right: 1px solid var(--line);
+            user-select: none;
+            position: relative;
+        }
+
+        .editor-gutter .nums {
+            position: absolute;
+            top: 14px;
+            left: 0;
+            right: 8px;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .editor-gutter .nums div {
+            line-height: 1.55;
+            height: calc(1.55em);
+            color: var(--fg-3);
+        }
+
+        .editor-gutter .nums div.active {
+            color: var(--fg-1);
+        }
+
+        .editor-stage {
+            flex: 1;
+            position: relative;
+            min-width: 0;
+            min-height: 0;
+        }
+
+        .editor-hl,
+        .editor-area {
+            position: absolute;
+            inset: 0;
+            margin: 0;
+            padding: 14px 18px 14px 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.55;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            tab-size: 4;
+            border: 0;
+            outline: none;
+            background: transparent;
+        }
+
+        .editor-hl {
+            pointer-events: none;
+            color: var(--fg-0);
+            overflow: hidden;
+        }
+
+        .editor-hl code {
+            display: block;
+            font: inherit;
+            white-space: inherit;
+        }
+
+        .editor-area {
+            color: transparent;
+            caret-color: var(--accent);
+            resize: none;
+            overflow: auto;
+            scrollbar-color: var(--line-bright) transparent;
+            scrollbar-width: thin;
+        }
+
+        .editor-area::placeholder {
+            color: var(--fg-3);
+        }
+
+        .editor-area::selection {
+            background: rgba(125, 211, 252, 0.22);
+        }
+
+        .editor-area::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        .editor-area::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .editor-area::-webkit-scrollbar-thumb {
+            background: var(--line-bright);
+            border-radius: 4px;
+            border: 2px solid var(--bg-1);
+        }
+
+        .editor-area::-webkit-scrollbar-thumb:hover {
+            background: var(--fg-3);
+        }
+
+        .editor-stage::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 1px;
+            background: var(--accent);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 180ms ease;
+            pointer-events: none;
+        }
+
+        .editor-stage.focused::after {
+            transform: scaleX(1);
+        }
+
+        .input-panel.no-wrap .editor-hl,
+        .input-panel.no-wrap .editor-hl code,
+        .input-panel.no-wrap .editor-area {
+            white-space: pre;
+            word-wrap: normal;
+            overflow-wrap: normal;
+        }
+
+        .input-status {
+            padding: 6px 14px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10.5px;
+            color: var(--fg-3);
+            background: var(--bg-1);
+            border-top: 1px solid var(--line);
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            letter-spacing: 0.02em;
+        }
+
+        .input-status .pos {
+            color: var(--fg-2);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .input-status .hint {
+            color: var(--fg-3);
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        /* Error strip — sits inside input-panel between status bar and footer.
+     Hidden until there's at least one issue to surface. */
+        .error-strip {
+            display: none;
+            flex-direction: column;
+            gap: 2px;
+            padding: 6px 14px 8px;
+            background: rgba(239, 68, 68, 0.04);
+            border-top: 1px solid rgba(239, 68, 68, 0.18);
+            max-height: 140px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(239, 68, 68, 0.3) transparent;
+        }
+
+        .error-strip.has-errors {
+            display: flex;
+        }
+
+        .error-strip-header {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--error);
+            opacity: 0.85;
+            margin-bottom: 4px;
+        }
+
+        .error-item {
+            display: flex;
+            gap: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--fg-1);
+            line-height: 1.45;
+            padding: 1px 0;
+            cursor: pointer;
+            transition: color 80ms;
+        }
+
+        .error-item:hover {
+            color: var(--fg-0);
+        }
+
+        .error-item.no-line {
+            cursor: default;
+        }
+
+        .error-item .ln {
+            flex: 0 0 auto;
+            color: var(--error);
+            font-variant-numeric: tabular-nums;
+            min-width: 30px;
+            opacity: 0.9;
+        }
+
+        .error-item .msg {
+            flex: 1;
+            word-break: break-word;
+        }
+
+        .error-strip::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .error-strip::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .error-strip::-webkit-scrollbar-thumb {
+            background: rgba(239, 68, 68, 0.3);
+            border-radius: 4px;
+        }
+
+        .expanded-view {
+            flex: 1;
+            display: flex;
+            background: var(--bg-1);
+            overflow: hidden;
+            min-height: 0;
+            position: relative;
+        }
+
+        .expanded-view pre {
+            flex: 1;
+            margin: 0;
+            padding: 14px 18px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.55;
+            color: var(--fg-0);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow: auto;
+            tab-size: 4;
+            scrollbar-color: var(--line-bright) transparent;
+            scrollbar-width: thin;
+        }
+
+        .expanded-view.empty pre::before {
+            content: '— no expanded output yet —';
+            color: var(--fg-3);
+            font-style: italic;
+        }
+
+        .expanded-view.error pre {
+            color: var(--error);
+        }
+
+        /* C / C++ syntax theme — shared by overlay + expanded pane */
+        .cm-comment {
+            color: #5e6878;
+            font-style: italic;
+        }
+
+        .cm-string {
+            color: #f0b27a;
+        }
+
+        .cm-char {
+            color: #f0b27a;
+        }
+
+        .cm-number {
+            color: #c1d59f;
+        }
+
+        .cm-keyword {
+            color: var(--warm);
+        }
+
+        .cm-type {
+            color: var(--accent);
+        }
+
+        .cm-predef {
+            color: var(--violet);
+        }
+
+        .cm-macro {
+            color: #f4d07f;
+        }
+
+        .cm-fn {
+            color: #f4d07f;
+        }
+
+        .cm-meta {
+            color: var(--rose);
+        }
+
+        .cm-meta-kw {
+            color: var(--rose);
+            font-weight: 600;
+        }
+
+        .cm-operator {
+            color: #a3aebf;
+        }
+
+        .cm-punct {
+            color: var(--fg-1);
+        }
+
+        .cm-id {
+            color: var(--fg-0);
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div>
+            <h1>macro<span class="em">scope</span></h1>
+            <div class="subtitle">a step-by-step C/C++ macro expansion visualizer</div>
+        </div>
+        <div class="right">
+            <select id="exampleSelect">
+                <option value="0">─ examples ─</option>
+                <option value="nested">nested function-like</option>
+                <option value="stringize">stringize indirection</option>
+                <option value="paste">token paste (##)</option>
+                <option value="prescan">argument prescan</option>
+                <option value="bluepaint">blue paint / self-ref</option>
+                <option value="bitfield">bitfield builder</option>
+                <option value="variadic">variadic (__VA_ARGS__, __VA_OPT__)</option>
+                <option value="deferred">deferred expansion (B/C/E/F)</option>
+                <option value="undef">#undef</option>
+                <option value="rescan_subsequent">rescan into subsequent tokens</option>
+            </select>
+            <button id="runBtn" class="primary">▸ expand</button>
+        </div>
+    </header>
+
+    <main>
+        <section class="pane-left" id="paneLeft">
+            <div class="input-panel" id="inputPanel">
+                <div class="pane-label">
+                    <span>input · C / C++</span>
+                    <div class="actions">
+                        <span class="count" id="inputCount">0 lines</span>
+                        <button class="toggle-btn" id="wrapBtn" title="toggle line wrap"
+                            aria-pressed="true">wrap</button>
+                    </div>
+                </div>
+                <div class="editor-wrap">
+                    <div class="editor-gutter">
+                        <div class="nums" id="lineNums"></div>
+                    </div>
+                    <div class="editor-stage" id="editorStage">
+                        <pre class="editor-hl" aria-hidden="true"><code id="hlCode"></code></pre>
+                        <textarea id="input" class="editor-area" spellcheck="false" autocorrect="off"
+                            autocapitalize="off"
+                            placeholder="// write or paste C / C++ here&#10;//   #define directives are collected, the rest is the trigger&#10;&#10;#define ADD(a, b) ((a) + (b))&#10;ADD(1, 2)"></textarea>
+                    </div>
+                </div>
+                <div class="input-status">
+                    <span class="pos" id="caretPos">Ln 1, Col 1 · 0 chars</span>
+                    <span class="hint"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> to expand</span>
+                </div>
+                <div class="error-strip" id="errorStrip" aria-live="polite"></div>
+                <div class="pane-left-footer">
+                    <button id="clearBtn">clear</button>
+                </div>
+            </div>
+            <div class="expanded-panel">
+                <div class="pane-label">
+                    <span>expanded · live</span>
+                    <span class="count" id="expandedCount">—</span>
+                </div>
+                <div class="expanded-view empty" id="expandedView">
+                    <pre><code id="expandedCode"></code></pre>
+                </div>
+            </div>
+        </section>
+
+        <div class="splitter" id="vSplitter" role="separator" aria-orientation="vertical" tabindex="0"
+            title="drag to resize"></div>
+
+        <section class="pane-right" id="rightPane">
+            <div class="empty-state" id="emptyState">
+                <div class="title">no expansion yet</div>
+                <div>paste macro definitions and an invocation on the left.<br>
+                    press <kbd>▸ expand</kbd> or <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to run.</div>
+            </div>
+            <div id="resultView" style="display:none; flex:1; flex-direction:column; min-height:0;">
+                <div class="step-header">
+                    <div class="step-meta">
+                        <span class="step-counter" id="stepCounter">STEP 0 / 0</span>
+                        <span class="step-tag" id="stepTag">INIT</span>
+                    </div>
+                    <div class="step-desc" id="stepDesc">—</div>
+                </div>
+                <div class="stream-container">
+                    <div class="stream-label">current token stream</div>
+                    <div class="stream" id="stream"></div>
+                    <div class="macro-table" id="macroTable" style="display:none;">
+                        <div class="macro-table-label">defined macros</div>
+                        <div id="macroTableBody"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="step-controls">
+            <button id="firstBtn" title="first step (Home)">⟨⟨</button>
+            <button id="prevBtn" title="previous step (←)">⟨</button>
+            <button id="playBtn" title="play / pause (Space)">▶</button>
+            <button id="nextBtn" title="next step (→)">⟩</button>
+            <button id="lastBtn" title="last step (End)">⟩⟩</button>
+        </div>
+        <div class="scrubber-wrap">
+            <div class="scrubber" id="scrubber">
+                <div class="scrubber-fill" id="scrubFill"></div>
+                <div class="scrubber-handle" id="scrubHandle"></div>
+            </div>
+            <span class="scrub-label" id="scrubLabel">0 / 0</span>
+        </div>
+    </footer>
+
+    <script>
+        "use strict";
+
+        // ============================================================================
+        // TOKENIZER
+        // ============================================================================
+        // Produces a token stream with whitespace preserved so we can faithfully
+        // render the source. Token types: id, num, str, punct, hash, hashhash, ws
+
+        function tokenize(src, errors, startLine) {
+            // `errors` (optional): array; if provided, the tokenizer pushes
+            //   { line, msg } entries on unterminated string/char/block-comment.
+            // `startLine` (optional, default 1): line number the first character of
+            //   `src` sits on in the overall source file.
+            const tokens = [];
+            let i = 0;
+            const n = src.length;
+            let line = startLine || 1;
+            const report = (lno, msg) => { if (errors) errors.push({ line: lno, msg }); };
+
+            while (i < n) {
+                const c = src[i];
+                const tokLine = line;
+
+                // whitespace (preserved)
+                if (/\s/.test(c)) {
+                    let s = '';
+                    while (i < n && /\s/.test(src[i])) {
+                        if (src[i] === '\n') line++;
+                        s += src[i++];
+                    }
+                    tokens.push({ type: 'ws', value: s, line: tokLine });
+                    continue;
+                }
+
+                // line comments
+                if (c === '/' && src[i + 1] === '/') {
+                    while (i < n && src[i] !== '\n') i++;
+                    tokens.push({ type: 'ws', value: ' ', line: tokLine }); // comments → single space
+                    continue;
+                }
+
+                // block comments (may span lines)
+                if (c === '/' && src[i + 1] === '*') {
+                    i += 2;
+                    let closed = false;
+                    while (i < n) {
+                        if (src[i] === '*' && src[i + 1] === '/') { closed = true; i += 2; break; }
+                        if (src[i] === '\n') line++;
+                        i++;
+                    }
+                    if (!closed) report(tokLine, "unterminated '/* … */' block comment");
+                    tokens.push({ type: 'ws', value: ' ', line: tokLine });
+                    continue;
+                }
+
+                // identifier
+                if (/[a-zA-Z_]/.test(c)) {
+                    let s = '';
+                    while (i < n && /[a-zA-Z0-9_]/.test(src[i])) s += src[i++];
+                    tokens.push({ type: 'id', value: s, line: tokLine });
+                    continue;
+                }
+
+                // number
+                if (/[0-9]/.test(c) || (c === '.' && /[0-9]/.test(src[i + 1] || ''))) {
+                    let s = '';
+                    while (i < n && /[0-9a-zA-Z._]/.test(src[i])) {
+                        if ((src[i] === 'e' || src[i] === 'E') && (src[i + 1] === '+' || src[i + 1] === '-')) {
+                            s += src[i++]; s += src[i++]; continue;
+                        }
+                        s += src[i++];
+                    }
+                    tokens.push({ type: 'num', value: s, line: tokLine });
+                    continue;
+                }
+
+                // string / char literals (must close on same line)
+                if (c === '"' || c === "'") {
+                    const q = c;
+                    let s = c; i++;
+                    let closed = false;
+                    while (i < n) {
+                        if (src[i] === q) { s += src[i++]; closed = true; break; }
+                        if (src[i] === '\n') break;  // unterminated
+                        if (src[i] === '\\' && i + 1 < n) { s += src[i++]; s += src[i++]; continue; }
+                        s += src[i++];
+                    }
+                    if (!closed) {
+                        report(tokLine, `unterminated ${q === '"' ? 'string' : 'character'} literal`);
+                    }
+                    tokens.push({ type: 'str', value: s, line: tokLine });
+                    continue;
+                }
+
+                // ##
+                if (c === '#' && src[i + 1] === '#') {
+                    tokens.push({ type: 'hashhash', value: '##', line: tokLine });
+                    i += 2;
+                    continue;
+                }
+
+                // #
+                if (c === '#') {
+                    tokens.push({ type: 'hash', value: '#', line: tokLine });
+                    i++;
+                    continue;
+                }
+
+                // multi-char punctuators (basic set)
+                const two = src.substr(i, 2);
+                if (['==', '!=', '<=', '>=', '&&', '||', '<<', '>>', '++', '--', '->', '+=', '-=', '*=', '/=', '%=', '&=', '|=', '^='].includes(two)) {
+                    tokens.push({ type: 'punct', value: two, line: tokLine });
+                    i += 2;
+                    continue;
+                }
+
+                // single-char punct
+                tokens.push({ type: 'punct', value: c, line: tokLine });
+                i++;
+            }
+            return tokens;
+        }
+
+        // turn a token list back into source text
+        function detok(tokens) {
+            return tokens.map(t => t.value).join('');
+        }
+
+        // strip wrapping whitespace from a token list (used for display)
+        function trimWs(tokens) {
+            let lo = 0, hi = tokens.length;
+            while (lo < hi && tokens[lo].type === 'ws') lo++;
+            while (hi > lo && tokens[hi - 1].type === 'ws') hi--;
+            return tokens.slice(lo, hi);
+        }
+
+        function cloneTokens(toks) {
+            return toks.map(t => ({ ...t, hide: t.hide ? new Set(t.hide) : new Set() }));
+        }
+
+        // ============================================================================
+        // MACRO DEFINITION PARSING
+        // ============================================================================
+        // Parse #define directives. The remaining non-directive lines form the trigger
+        // expression that will be expanded step-by-step.
+
+        function parseInput(source) {
+            const commands = [];
+            const errors = [];
+            source = source.replace(/\\\n/g, ' ');     // line-continuation (phase 2)
+            const lines = source.split('\n');
+
+            // Content is collected as a contiguous string with newlines preserved, so
+            // multi-line block comments tokenize correctly. We flush on directive
+            // boundaries, passing the starting source-line so token line attribution
+            // remains correct across directive interleaving.
+            let contentBuf = '';
+            let contentStartLine = 1;
+
+            const flush = () => {
+                if (contentBuf.length > 0) {
+                    const tokErrs = [];
+                    const tokens = tokenize(contentBuf, tokErrs, contentStartLine);
+                    for (const e of tokErrs) errors.push(e);
+                    const meaningful = tokens.some(t => t.type !== 'ws');
+                    if (meaningful) commands.push({ type: 'content', tokens });
+                }
+                contentBuf = '';
+            };
+
+            for (let li = 0; li < lines.length; li++) {
+                const raw = lines[li];
+                const lineNo = li + 1;
+                const line = raw.trim();
+
+                if (!line) {
+                    contentBuf += '\n';
+                    continue;
+                }
+                if (line.startsWith('#')) {
+                    // Keep line counting aligned with source regardless of which branch we
+                    // take below (the trailing '\n' is harmless as trailing whitespace for
+                    // flushing branches, and required to advance the counter for non-
+                    // flushing error branches).
+                    contentBuf += '\n';
+
+                    // Detect unclosed function-like param list early: `name(` with no
+                    // matching `)` on the directive line. (Space before `(` would mean
+                    // object-like, which is fine.)
+                    const unclosedFn = line.match(/^#\s*define\s+(\w+)\(/);
+                    if (unclosedFn && !/^#\s*define\s+\w+\([^)]*\)/.test(line)) {
+                        errors.push({ line: lineNo, msg: `unclosed parameter list in #define ${unclosedFn[1]}` });
+                        flush();
+                        contentStartLine = lineNo + 1;
+                        continue;
+                    }
+
+                    const defM = line.match(/^#\s*define\s+(\w+)(\([^)]*\))?(.*)$/);
+                    const undefM = line.match(/^#\s*undef\s+(\w+)\s*$/);
+                    const defNoNameM = !defM && /^#\s*define\b/.test(line);
+                    const undefNoNameM = !undefM && /^#\s*undef\b/.test(line);
+                    const defUnclosedParamM = !defM && /^#\s*define\s+\w+\s*\(/.test(line);
+
+                    if (defM) {
+                        flush();
+                        contentStartLine = lineNo + 1;
+                        const name = defM[1];
+                        const paramsSrc = defM[2];
+                        const bodySrc = defM[3].replace(/^\s+/, '');
+                        let macro;
+                        if (paramsSrc) {
+                            const inner = paramsSrc.slice(1, -1).trim();
+                            const rawParams = inner ? inner.split(',').map(p => p.trim()) : [];
+                            let variadic = false;
+                            const params = [];
+                            for (let pi = 0; pi < rawParams.length; pi++) {
+                                if (rawParams[pi] === '...') {
+                                    if (pi === rawParams.length - 1) variadic = true;
+                                    else errors.push({ line: lineNo, msg: `'...' must be the last parameter of ${name}` });
+                                } else if (!/^[a-zA-Z_]\w*$/.test(rawParams[pi])) {
+                                    errors.push({ line: lineNo, msg: `invalid parameter name '${rawParams[pi]}' in ${name}` });
+                                } else if (params.includes(rawParams[pi])) {
+                                    errors.push({ line: lineNo, msg: `duplicate parameter '${rawParams[pi]}' in ${name}` });
+                                } else {
+                                    params.push(rawParams[pi]);
+                                }
+                            }
+                            macro = { kind: 'fn', name, params, variadic, body: tokenize(bodySrc, errors, lineNo) };
+                        } else {
+                            macro = { kind: 'obj', name, body: tokenize(bodySrc, errors, lineNo) };
+                        }
+                        commands.push({ type: 'define', name, macro, line: lineNo });
+                    } else if (undefM) {
+                        flush();
+                        contentStartLine = lineNo + 1;
+                        commands.push({ type: 'undef', name: undefM[1], line: lineNo });
+                    } else if (defUnclosedParamM) {
+                        errors.push({ line: lineNo, msg: `unclosed parameter list in #define` });
+                    } else if (defNoNameM) {
+                        errors.push({ line: lineNo, msg: `#define is missing a macro name` });
+                    } else if (undefNoNameM) {
+                        errors.push({ line: lineNo, msg: `#undef is missing a macro name` });
+                    } else if (/^#\s*(if|ifdef|ifndef|else|elif|elifdef|elifndef|endif|include|pragma|error|warning|line|embed)\b/.test(line)) {
+                        errors.push({ line: lineNo, msg: `directive '#${line.match(/^#\s*(\w+)/)[1]}' not supported by this simulator` });
+                    } else {
+                        errors.push({ line: lineNo, msg: `unrecognized directive: ${line}` });
+                    }
+                } else {
+                    contentBuf += raw + '\n';
+                }
+            }
+            flush();
+
+            // Body validation: §6.10.5.4 (## cannot be at start/end of body), §6.10.5.3
+            // (# must be followed by a parameter), §6.10.5 (__VA_ARGS__ / __VA_OPT__
+            // valid only in variadic macros).
+            for (const cmd of commands) {
+                if (cmd.type !== 'define') continue;
+                const m = cmd.macro;
+                const body = m.body;
+                const tBody = trimWs(body);
+
+                if (tBody.length > 0) {
+                    if (tBody[0].type === 'hashhash') {
+                        errors.push({ line: cmd.line, msg: `'##' cannot appear at the start of ${m.name}'s body` });
+                    }
+                    if (tBody.length > 1 && tBody[tBody.length - 1].type === 'hashhash') {
+                        errors.push({ line: cmd.line, msg: `'##' cannot appear at the end of ${m.name}'s body` });
+                    }
+                }
+
+                if (m.kind === 'fn') {
+                    // # must be followed by a parameter (or __VA_ARGS__ for variadic).
+                    for (let bi = 0; bi < body.length; bi++) {
+                        if (body[bi].type !== 'hash') continue;
+                        let bj = bi + 1;
+                        while (bj < body.length && body[bj].type === 'ws') bj++;
+                        const next = body[bj];
+                        if (!next || next.type !== 'id') {
+                            errors.push({ line: cmd.line, msg: `'#' must be followed by a parameter name in ${m.name}` });
+                            break;
+                        }
+                        const isParam = m.params.includes(next.value) || (m.variadic && next.value === '__VA_ARGS__');
+                        if (!isParam) {
+                            errors.push({ line: cmd.line, msg: `'#' followed by non-parameter '${next.value}' in ${m.name}` });
+                            break;
+                        }
+                    }
+                }
+
+                if (!m.variadic) {
+                    for (const t of body) {
+                        if (t.type === 'id' && (t.value === '__VA_ARGS__' || t.value === '__VA_OPT__')) {
+                            errors.push({ line: cmd.line, msg: `'${t.value}' is valid only inside a variadic macro (${m.name} is not variadic)` });
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Dedupe + sort errors by line.
+            const seen = new Set();
+            const deduped = [];
+            for (const e of errors) {
+                const key = `${e.line}|${e.msg}`;
+                if (!seen.has(key)) { seen.add(key); deduped.push(e); }
+            }
+            deduped.sort((a, b) => (a.line || 0) - (b.line || 0));
+
+            return { commands, errors: deduped };
+        }
+
+        // ============================================================================
+        // PREPROCESSOR (with step recording)
+        // ============================================================================
+
+        class Preprocessor {
+            constructor(macros) {
+                this.macros = macros;
+                this.steps = [];
+            }
+
+            record(kind, desc, tokens, marker = null) {
+                this.steps.push({
+                    kind,
+                    desc,
+                    tokens: cloneTokens(tokens),
+                    marker,
+                });
+            }
+
+            // collectArgs returns [args, argPositions, closeIdx] or null on unterminated.
+            collectArgs(tokens, openIdx) {
+                const args = [];
+                const argPositions = [];
+                let cur = [];
+                let curStart = openIdx + 1;
+                let depth = 0;
+                let i = openIdx + 1;
+                while (i < tokens.length) {
+                    const t = tokens[i];
+                    if (t.value === '(') { depth++; cur.push(t); i++; continue; }
+                    if (t.value === ')') {
+                        if (depth === 0) {
+                            if (cur.length > 0 || args.length > 0) {
+                                args.push(cur);
+                                argPositions.push({ start: curStart, end: i });
+                            }
+                            return [args, argPositions, i];
+                        }
+                        depth--; cur.push(t); i++; continue;
+                    }
+                    if (t.value === ',' && depth === 0) {
+                        args.push(cur);
+                        argPositions.push({ start: curStart, end: i });
+                        cur = [];
+                        i++;
+                        curStart = i;
+                        continue;
+                    }
+                    cur.push(t); i++;
+                }
+                return null;
+            }
+
+            // Iterative-splicing process. The "rescan" of a substitution result is the
+            // next loop iteration after splicing — which naturally considers all
+            // subsequent source tokens (the C23 §6.10.5.6 requirement).
+            // Per-token `hide` Set tracks which macros each token must not re-trigger.
+            process(initialTokens, recordInitDone = true) {
+                let tokens = initialTokens.map(t => ({
+                    ...t,
+                    hide: t.hide ? new Set(t.hide) : new Set()
+                }));
+
+                if (recordInitDone) {
+                    this.record('init', `Initial: <span class="mono">${escapeHtml(detok(trimWs(tokens)))}</span>`, tokens, null);
+                }
+
+                let i = 0;
+                let iters = 0;
+                const ITER_LIMIT = 100000;
+
+                while (i < tokens.length) {
+                    if (++iters > ITER_LIMIT) {
+                        this.record('error', 'Expansion exceeded safety iteration limit (possible runaway).', tokens);
+                        return tokens;
+                    }
+
+                    const tok = tokens[i];
+
+                    if (tok.type !== 'id' || tok.hide.has(tok.value) || !this.macros.has(tok.value)) {
+                        i++;
+                        continue;
+                    }
+
+                    const macro = this.macros.get(tok.value);
+
+                    if (macro.kind === 'obj') {
+                        const newHide = new Set(tok.hide); newHide.add(macro.name);
+                        const replacement = macro.body.map(b => ({
+                            ...b,
+                            hide: new Set([...(b.hide || []), ...newHide])
+                        }));
+
+                        this.record(
+                            'found',
+                            `Found object-like macro <span class="mono">${escapeHtml(macro.name)}</span> → replacing with body.`,
+                            tokens,
+                            { start: i, end: i + 1, kind: 'active' }
+                        );
+
+                        tokens = tokens.slice(0, i).concat(replacement, tokens.slice(i + 1));
+
+                        this.record(
+                            'subst',
+                            `Substituted body of <span class="mono">${escapeHtml(macro.name)}</span>: <span class="mono">${escapeHtml(detok(trimWs(macro.body)) || '∅')}</span>`,
+                            tokens,
+                            { start: i, end: i + replacement.length, kind: 'new' }
+                        );
+                        continue;  // re-process from i (rescan)
+                    }
+
+                    // Function-like
+                    let j = i + 1;
+                    while (j < tokens.length && tokens[j].type === 'ws') j++;
+                    if (j >= tokens.length || tokens[j].value !== '(') {
+                        i++;
+                        continue;
+                    }
+
+                    const argResult = this.collectArgs(tokens, j);
+                    if (!argResult) {
+                        this.record('error', `Unterminated argument list for <span class="mono">${escapeHtml(macro.name)}</span>.`, tokens, null);
+                        return tokens;
+                    }
+                    const [rawArgs, , closeIdx] = argResult;
+
+                    // §6.10.5.1: M() = 0 args iff macro takes 0 params; else 1 empty arg.
+                    let args = rawArgs;
+                    if (args.length === 0 && macro.params.length > 0) args = [[]];
+
+                    const fixedCount = macro.params.length;
+                    const arityOk = macro.variadic ? args.length >= fixedCount : args.length === fixedCount;
+                    if (!arityOk) {
+                        const needs = macro.variadic ? `at least ${fixedCount}` : `${fixedCount}`;
+                        this.record(
+                            'error',
+                            `<span class="mono">${escapeHtml(macro.name)}</span> expects ${needs} arg(s), got ${args.length}.`,
+                            tokens,
+                            { start: i, end: closeIdx + 1, kind: 'active' }
+                        );
+                        i = closeIdx + 1;
+                        continue;
+                    }
+
+                    let effectiveParams, allArgs;
+                    if (macro.variadic) {
+                        effectiveParams = [...macro.params, '__VA_ARGS__'];
+                        const fixed = args.slice(0, fixedCount);
+                        const variadicArgs = args.slice(fixedCount);
+                        const vaTokens = [];
+                        for (let k = 0; k < variadicArgs.length; k++) {
+                            if (k > 0) {
+                                vaTokens.push({ type: 'punct', value: ',', hide: new Set() });
+                                vaTokens.push({ type: 'ws', value: ' ', hide: new Set() });
+                            }
+                            vaTokens.push(...variadicArgs[k]);
+                        }
+                        allArgs = [...fixed, vaTokens];
+                    } else {
+                        effectiveParams = macro.params;
+                        allArgs = args;
+                    }
+
+                    const argDisplay = allArgs.length
+                        ? allArgs.map((a, k) => `<span class="mono">${escapeHtml(effectiveParams[k])}=${escapeHtml(detok(trimWs(a)) || '∅')}</span>`).join(', ')
+                        : '∅';
+                    this.record(
+                        'found',
+                        `Found function-like macro <span class="mono">${escapeHtml(macro.name)}</span>${macro.variadic ? ' (variadic)' : ''} with ${allArgs.length} arg(s): ${argDisplay}`,
+                        tokens,
+                        { start: i, end: closeIdx + 1, kind: 'active' }
+                    );
+
+                    // §6.10.5.2: prescan args in independent contexts.
+                    const prescanned = [];
+                    for (let k = 0; k < allArgs.length; k++) {
+                        const before = detok(trimWs(allArgs[k]));
+                        const subPP = new Preprocessor(this.macros);
+                        const argInput = allArgs[k].map(t => ({ ...t, hide: t.hide ? new Set(t.hide) : new Set() }));
+                        const expanded = subPP.process(argInput, false);
+                        prescanned.push(expanded);
+                        const after = detok(trimWs(expanded));
+                        if (before === after) {
+                            this.record(
+                                'arg',
+                                `Arg <span class="mono">${escapeHtml(effectiveParams[k])}</span> = <span class="mono">${escapeHtml(before || '∅')}</span> — no expansion.`,
+                                tokens,
+                                { start: i, end: closeIdx + 1, kind: 'active' }
+                            );
+                        } else {
+                            this.record(
+                                'arg',
+                                `Arg <span class="mono">${escapeHtml(effectiveParams[k])}</span> prescanned: <span class="mono">${escapeHtml(before)}</span> → <span class="mono">${escapeHtml(after)}</span>`,
+                                tokens,
+                                { start: i, end: closeIdx + 1, kind: 'active' }
+                            );
+                        }
+                    }
+
+                    const substituted = this.substitute(macro.body, effectiveParams, allArgs, prescanned);
+
+                    const newHide = new Set(tok.hide); newHide.add(macro.name);
+                    const final = substituted.map(t => ({
+                        ...t,
+                        hide: new Set([...(t.hide || []), ...newHide])
+                    }));
+
+                    tokens = tokens.slice(0, i).concat(final, tokens.slice(closeIdx + 1));
+
+                    this.record(
+                        'subst',
+                        `Substituted body of <span class="mono">${escapeHtml(macro.name)}</span>: <span class="mono">${escapeHtml(detok(trimWs(final)) || '∅')}</span>`,
+                        tokens,
+                        { start: i, end: i + final.length, kind: 'new' }
+                    );
+                    // Don't advance i — rescan from here.
+                }
+
+                if (recordInitDone) {
+                    this.record('done', `Final: <span class="mono">${escapeHtml(detok(trimWs(tokens)) || '∅')}</span>`, tokens, null);
+                }
+                return tokens;
+            }
+
+            // Substitute params in body. Handles #, ##, __VA_OPT__. Spec-correct
+            // stringization with whitespace collapse and string/char-literal escaping.
+            substitute(body, params, args, prescanned) {
+                const result = [];
+                const paramIdx = (name) => params.indexOf(name);
+
+                const rawValue = (t) => {
+                    if (t.type === 'id') {
+                        const pi = paramIdx(t.value);
+                        if (pi >= 0) return detok(trimWs(args[pi]));
+                    }
+                    return t.value;
+                };
+
+                const nextNonWs = (p) => {
+                    while (p < body.length && body[p].type === 'ws') p++;
+                    return p;
+                };
+
+                // §6.10.5.3: whitespace between tokens collapses to one space; leading/
+                // trailing stripped; backslashes and quotes in string/char literal token
+                // spellings get escaped.
+                const stringizeArg = (argTokens) => {
+                    const trimmed = trimWs(argTokens);
+                    let s = '';
+                    let prevWasNonWs = false;
+                    for (const t of trimmed) {
+                        if (t.type === 'ws') {
+                            if (prevWasNonWs) {
+                                s += ' ';
+                                prevWasNonWs = false;
+                            }
+                        } else {
+                            let spelling = t.value;
+                            if (t.type === 'str') {
+                                spelling = spelling.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+                            }
+                            s += spelling;
+                            prevWasNonWs = true;
+                        }
+                    }
+                    return '"' + s + '"';
+                };
+
+                let i = 0;
+                while (i < body.length) {
+                    const t = body[i];
+
+                    // # param
+                    if (t.type === 'hash') {
+                        const j = nextNonWs(i + 1);
+                        if (j < body.length && body[j].type === 'id') {
+                            const pi = paramIdx(body[j].value);
+                            if (pi >= 0) {
+                                result.push({ type: 'str', value: stringizeArg(args[pi]), hide: new Set() });
+                                i = j + 1;
+                                continue;
+                            }
+                        }
+                        result.push({ ...t });
+                        i++;
+                        continue;
+                    }
+
+                    // __VA_OPT__(content)
+                    if (t.type === 'id' && t.value === '__VA_OPT__') {
+                        const j = nextNonWs(i + 1);
+                        if (j < body.length && body[j].value === '(') {
+                            let depth = 1;
+                            let k = j + 1;
+                            while (k < body.length && depth > 0) {
+                                if (body[k].value === '(') depth++;
+                                else if (body[k].value === ')') {
+                                    depth--;
+                                    if (depth === 0) break;
+                                }
+                                k++;
+                            }
+                            if (k < body.length && body[k].value === ')') {
+                                const optContent = body.slice(j + 1, k);
+                                const vaIdx = paramIdx('__VA_ARGS__');
+                                const vaEmpty = vaIdx < 0 || trimWs(args[vaIdx]).length === 0;
+                                if (!vaEmpty) {
+                                    result.push(...this.substitute(optContent, params, args, prescanned));
+                                }
+                                i = k + 1;
+                                continue;
+                            }
+                        }
+                        result.push({ ...t });
+                        i++;
+                        continue;
+                    }
+
+                    // ## chain
+                    const lookahead = nextNonWs(i + 1);
+                    if (lookahead < body.length && body[lookahead].type === 'hashhash') {
+                        let pastedStr = rawValue(t);
+                        let curIdx = i;
+                        while (true) {
+                            const opIdx = nextNonWs(curIdx + 1);
+                            if (opIdx >= body.length || body[opIdx].type !== 'hashhash') break;
+                            const rhsIdx = nextNonWs(opIdx + 1);
+                            if (rhsIdx >= body.length) break;
+                            pastedStr += rawValue(body[rhsIdx]);
+                            curIdx = rhsIdx;
+                        }
+                        const retoks = tokenize(pastedStr).map(t => ({ ...t, hide: new Set() }));
+                        result.push(...trimWs(retoks));
+                        i = curIdx + 1;
+                        continue;
+                    }
+
+                    // Plain param substitution → prescanned form.
+                    if (t.type === 'id') {
+                        const pi = paramIdx(t.value);
+                        if (pi >= 0) {
+                            result.push(...cloneTokens(prescanned[pi]));
+                            i++;
+                            continue;
+                        }
+                    }
+
+                    result.push({ ...t });
+                    i++;
+                }
+
+                return result;
+            }
+        }
+
+        // ============================================================================
+        // RENDERING
+        // ============================================================================
+
+        function renderStream(tokens, marker, macroNames) {
+            const frag = document.createDocumentFragment();
+            for (let i = 0; i < tokens.length; i++) {
+                const t = tokens[i];
+                const span = document.createElement('span');
+                span.classList.add('tok', 'tok-' + t.type);
+
+                // Macros known to the preprocessor get a special color
+                if (t.type === 'id' && macroNames.has(t.value) && !t.painted) {
+                    span.classList.add('tok-macro');
+                }
+
+                if (marker && i >= marker.start && i < marker.end) {
+                    if (marker.kind === 'active') span.classList.add('hi-active');
+                    else if (marker.kind === 'new') span.classList.add('hi-new');
+                }
+
+                span.textContent = t.value;
+                frag.appendChild(span);
+            }
+            return frag;
+        }
+
+        function renderMacroTable(macros) {
+            const container = document.getElementById('macroTableBody');
+            container.innerHTML = '';
+            for (const [name, m] of macros) {
+                const row = document.createElement('div');
+                row.className = 'macro-row';
+                const sig = m.kind === 'fn' ? `${name}(${m.params.join(', ')})` : name;
+                row.innerHTML = `
+      <span class="name">${sig}</span>
+      <span class="arrow">→</span>
+      <span class="body">${escapeHtml(detok(trimWs(m.body))) || '<em style="color:var(--fg-3)">(empty)</em>'}</span>
+    `;
+                container.appendChild(row);
+            }
+        }
+
+        function escapeHtml(s) {
+            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        // ============================================================================
+        // UI STATE
+        // ============================================================================
+
+        let currentSteps = [];
+        let currentStepIdx = 0;
+        let macroNames = new Set();
+        let playInterval = null;
+
+        const els = {
+            input: document.getElementById('input'),
+            inputCount: document.getElementById('inputCount'),
+            runBtn: document.getElementById('runBtn'),
+            clearBtn: document.getElementById('clearBtn'),
+            exampleSelect: document.getElementById('exampleSelect'),
+            emptyState: document.getElementById('emptyState'),
+            resultView: document.getElementById('resultView'),
+            rightPane: document.getElementById('rightPane'),
+            stepCounter: document.getElementById('stepCounter'),
+            stepTag: document.getElementById('stepTag'),
+            stepDesc: document.getElementById('stepDesc'),
+            stream: document.getElementById('stream'),
+            macroTable: document.getElementById('macroTable'),
+            firstBtn: document.getElementById('firstBtn'),
+            prevBtn: document.getElementById('prevBtn'),
+            playBtn: document.getElementById('playBtn'),
+            nextBtn: document.getElementById('nextBtn'),
+            lastBtn: document.getElementById('lastBtn'),
+            scrubber: document.getElementById('scrubber'),
+            scrubFill: document.getElementById('scrubFill'),
+            scrubHandle: document.getElementById('scrubHandle'),
+            scrubLabel: document.getElementById('scrubLabel'),
+            // Editor / layout additions
+            paneLeft: document.getElementById('paneLeft'),
+            inputPanel: document.getElementById('inputPanel'),
+            editorStage: document.getElementById('editorStage'),
+            hlCode: document.getElementById('hlCode'),
+            lineNums: document.getElementById('lineNums'),
+            wrapBtn: document.getElementById('wrapBtn'),
+            caretPos: document.getElementById('caretPos'),
+            vSplitter: document.getElementById('vSplitter'),
+            expandedView: document.getElementById('expandedView'),
+            expandedCode: document.getElementById('expandedCode'),
+            expandedCount: document.getElementById('expandedCount'),
+            errorStrip: document.getElementById('errorStrip'),
+        };
+
+        function updateInputCount() {
+            const lines = els.input.value.split('\n').length;
+            els.inputCount.textContent = `${lines} line${lines === 1 ? '' : 's'}`;
+        }
+
+        // ============================================================================
+        // C / C++ SYNTAX HIGHLIGHTER
+        // ============================================================================
+
+        const CM_KEYWORDS = new Set([
+            // C control / statement
+            'if', 'else', 'for', 'while', 'do', 'return', 'switch', 'case', 'default', 'break', 'continue', 'goto',
+            'sizeof', 'alignof', '_Alignof', '_Alignas', '_Generic', '_Static_assert', 'static_assert',
+            // C++ control
+            'try', 'catch', 'throw', 'new', 'delete', 'this', 'nullptr', 'true', 'false',
+            // C++ namespace/class scaffolding
+            'class', 'struct', 'union', 'enum', 'namespace', 'template', 'typename', 'using', 'typedef',
+            'public', 'private', 'protected', 'virtual', 'override', 'final', 'friend', 'operator', 'explicit', 'export',
+            'static_cast', 'dynamic_cast', 'const_cast', 'reinterpret_cast', 'typeid', 'decltype',
+            'co_await', 'co_yield', 'co_return', 'requires', 'concept',
+            // storage / qualifiers
+            'inline', 'constexpr', 'consteval', 'constinit', 'noexcept',
+            'static', 'extern', 'auto', 'register', 'volatile', 'const', 'restrict', 'thread_local',
+            '_Atomic', '_Thread_local', '_Noreturn',
+            'mutable',
+        ]);
+        const CM_TYPES = new Set([
+            'int', 'char', 'void', 'float', 'double', 'short', 'long', 'signed', 'unsigned', 'bool', '_Bool',
+            'wchar_t', 'char8_t', 'char16_t', 'char32_t',
+            'size_t', 'ssize_t', 'ptrdiff_t', 'intptr_t', 'uintptr_t', 'intmax_t', 'uintmax_t',
+            'int8_t', 'int16_t', 'int32_t', 'int64_t', 'uint8_t', 'uint16_t', 'uint32_t', 'uint64_t',
+            'FILE', 'time_t', 'clock_t', 'va_list', 'jmp_buf', 'sig_atomic_t', 'nullptr_t',
+        ]);
+        const CM_PREDEF = new Set([
+            '__VA_ARGS__', '__VA_OPT__', '__FILE__', '__LINE__', '__DATE__', '__TIME__',
+            '__STDC__', '__STDC_VERSION__', '__STDC_HOSTED__', '__func__', '__FUNCTION__',
+            '__PRETTY_FUNCTION__', '__cplusplus', 'NULL', 'EOF',
+        ]);
+        const CM_DIRECTIVES = new Set([
+            'define', 'undef', 'include', 'if', 'ifdef', 'ifndef', 'else', 'elif', 'elifdef', 'elifndef',
+            'endif', 'pragma', 'error', 'warning', 'line', 'embed',
+        ]);
+
+        function cmEsc(s) {
+            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function highlightC(src) {
+            let out = '';
+            let i = 0;
+            const n = src.length;
+
+            while (i < n) {
+                const c = src[i];
+                const c2 = src[i + 1];
+
+                // line comment
+                if (c === '/' && c2 === '/') {
+                    let s = '';
+                    while (i < n && src[i] !== '\n') s += src[i++];
+                    out += `<span class="cm-comment">${cmEsc(s)}</span>`;
+                    continue;
+                }
+                // block comment
+                if (c === '/' && c2 === '*') {
+                    let s = '/*'; i += 2;
+                    while (i < n && !(src[i] === '*' && src[i + 1] === '/')) s += src[i++];
+                    if (i < n) { s += '*/'; i += 2; }
+                    out += `<span class="cm-comment">${cmEsc(s)}</span>`;
+                    continue;
+                }
+                // string / char literal
+                if (c === '"' || c === "'") {
+                    const q = c;
+                    let s = c; i++;
+                    while (i < n && src[i] !== q) {
+                        if (src[i] === '\\' && i + 1 < n) { s += src[i++]; s += src[i++]; continue; }
+                        if (src[i] === '\n') break;  // unterminated; stop at newline
+                        s += src[i++];
+                    }
+                    if (i < n && src[i] === q) { s += src[i++]; }
+                    out += `<span class="${q === '"' ? 'cm-string' : 'cm-char'}">${cmEsc(s)}</span>`;
+                    continue;
+                }
+                // # preprocessor — only if first non-ws on line
+                if (c === '#') {
+                    // ## paste operator (anywhere)
+                    if (c2 === '#') {
+                        out += `<span class="cm-operator">##</span>`;
+                        i += 2;
+                        continue;
+                    }
+                    // Check line context
+                    let j = i - 1, atLineStart = true;
+                    while (j >= 0 && src[j] !== '\n') {
+                        if (src[j] !== ' ' && src[j] !== '\t') { atLineStart = false; break; }
+                        j--;
+                    }
+                    if (atLineStart) {
+                        let s = '#'; i++;
+                        while (i < n && (src[i] === ' ' || src[i] === '\t')) s += src[i++];
+                        let word = '';
+                        while (i < n && /[a-zA-Z_]/.test(src[i])) word += src[i++];
+                        const isDir = CM_DIRECTIVES.has(word);
+                        out += `<span class="cm-meta">${cmEsc(s)}</span><span class="${isDir ? 'cm-meta-kw' : 'cm-meta'}">${cmEsc(word)}</span>`;
+                        continue;
+                    }
+                    // # stringize operator within a macro body
+                    out += `<span class="cm-operator">#</span>`;
+                    i++;
+                    continue;
+                }
+                // identifier
+                if (/[a-zA-Z_]/.test(c)) {
+                    let s = '';
+                    while (i < n && /[a-zA-Z0-9_]/.test(src[i])) s += src[i++];
+                    let cls;
+                    if (CM_KEYWORDS.has(s)) cls = 'cm-keyword';
+                    else if (CM_TYPES.has(s)) cls = 'cm-type';
+                    else if (CM_PREDEF.has(s)) cls = 'cm-predef';
+                    else if (s.length >= 2 && /^[A-Z][A-Z0-9_]*$/.test(s)) cls = 'cm-macro';
+                    else {
+                        // function-call heuristic: look ahead for '('
+                        let k = i;
+                        while (k < n && (src[k] === ' ' || src[k] === '\t')) k++;
+                        cls = (k < n && src[k] === '(') ? 'cm-fn' : 'cm-id';
+                    }
+                    out += `<span class="${cls}">${cmEsc(s)}</span>`;
+                    continue;
+                }
+                // number
+                if (/[0-9]/.test(c) || (c === '.' && /[0-9]/.test(c2))) {
+                    let s = '';
+                    while (i < n && /[0-9a-zA-Z._]/.test(src[i])) {
+                        if ((src[i] === 'e' || src[i] === 'E' || src[i] === 'p' || src[i] === 'P') &&
+                            (src[i + 1] === '+' || src[i + 1] === '-')) {
+                            s += src[i++]; s += src[i++]; continue;
+                        }
+                        s += src[i++];
+                    }
+                    out += `<span class="cm-number">${cmEsc(s)}</span>`;
+                    continue;
+                }
+                // multi-char operators (3, then 2)
+                const three = src.substr(i, 3);
+                if (['...', '<<=', '>>=', '->*'].includes(three)) {
+                    out += `<span class="cm-operator">${cmEsc(three)}</span>`;
+                    i += 3; continue;
+                }
+                const two = src.substr(i, 2);
+                if (['==', '!=', '<=', '>=', '&&', '||', '<<', '>>', '++', '--', '->', '+=', '-=', '*=', '/=', '%=', '&=', '|=', '^=', '::', '.*'].includes(two)) {
+                    out += `<span class="cm-operator">${cmEsc(two)}</span>`;
+                    i += 2; continue;
+                }
+                // single-char operator / punct
+                if (/[+\-*\/%=<>!&|^~?:]/.test(c)) {
+                    out += `<span class="cm-operator">${cmEsc(c)}</span>`;
+                    i++; continue;
+                }
+                if (/[(){}\[\];,.]/.test(c)) {
+                    out += `<span class="cm-punct">${cmEsc(c)}</span>`;
+                    i++; continue;
+                }
+                // whitespace / anything else — pass through
+                out += cmEsc(c);
+                i++;
+            }
+            return out;
+        }
+
+        // ============================================================================
+        // EDITOR WIRING (textarea + syntax-highlight overlay + line gutter + status)
+        // ============================================================================
+
+        function renderEditor() {
+            const src = els.input.value;
+            // Trailing newline trick: ensures the highlight overlay covers the final
+            // visual row when the textarea ends in a newline (otherwise it collapses).
+            els.hlCode.innerHTML = highlightC(src + (src.endsWith('\n') ? ' ' : ''));
+            const lineCount = src.split('\n').length;
+            let numHTML = '';
+            for (let k = 1; k <= lineCount; k++) numHTML += `<div>${k}</div>`;
+            els.lineNums.innerHTML = numHTML;
+            updateInputCount();
+            updateCaret();
+            syncScroll();
+        }
+
+        function syncScroll() {
+            const t = els.input;
+            // hl overlay tracks textarea scroll
+            els.hlCode.parentElement.scrollTop = t.scrollTop;
+            els.hlCode.parentElement.scrollLeft = t.scrollLeft;
+            // gutter follows vertical scroll only
+            els.lineNums.style.transform = `translateY(${-t.scrollTop}px)`;
+        }
+
+        function updateCaret() {
+            const t = els.input;
+            const v = t.value.slice(0, t.selectionStart);
+            const lines = v.split('\n');
+            const ln = lines.length;
+            const col = lines[lines.length - 1].length + 1;
+            const total = t.value.length;
+            els.caretPos.textContent = `Ln ${ln}, Col ${col} · ${total} char${total === 1 ? '' : 's'}`;
+            // highlight active gutter line
+            const prev = els.lineNums.querySelector('div.active');
+            if (prev) prev.classList.remove('active');
+            const target = els.lineNums.children[ln - 1];
+            if (target) target.classList.add('active');
+        }
+
+        // ============================================================================
+        // LIVE EXPANDED PANEL
+        // ============================================================================
+
+        let expandedDebounce = 0;
+        function schedExpandedUpdate() {
+            clearTimeout(expandedDebounce);
+            expandedDebounce = setTimeout(updateExpandedView, 120);
+        }
+
+        function updateExpandedView() {
+            const src = els.input.value;
+            if (!src.trim()) {
+                els.expandedCode.innerHTML = '';
+                els.expandedView.classList.add('empty');
+                els.expandedView.classList.remove('error');
+                els.expandedCount.textContent = '—';
+                renderErrors([]);
+                return;
+            }
+            const allErrors = [];
+            try {
+                const { commands, errors } = parseInput(src);
+                for (const e of errors) allErrors.push(e);
+                const macros = new Map();
+                const results = [];
+                for (const cmd of commands) {
+                    if (cmd.type === 'define') macros.set(cmd.name, cmd.macro);
+                    else if (cmd.type === 'undef') macros.delete(cmd.name);
+                    else if (cmd.type === 'content') {
+                        const pp = new Preprocessor(macros);
+                        const expanded = pp.process(cmd.tokens, false);
+                        results.push(...expanded);
+                        // Surface any runtime errors recorded during expansion.
+                        for (const step of pp.steps) {
+                            if (step.kind !== 'error') continue;
+                            const txt = step.desc.replace(/<[^>]*>/g, '');
+                            const tokAt = step.marker && step.tokens[step.marker.start];
+                            allErrors.push({ line: tokAt && tokAt.line || null, msg: txt });
+                        }
+                    }
+                }
+                const text = detok(trimWs(results));
+                if (!text) {
+                    els.expandedCode.innerHTML = '';
+                    els.expandedView.classList.add('empty');
+                    els.expandedView.classList.remove('error');
+                    els.expandedCount.textContent = '0 chars';
+                } else {
+                    els.expandedCode.innerHTML = highlightC(text);
+                    els.expandedView.classList.remove('empty');
+                    els.expandedView.classList.remove('error');
+                    els.expandedCount.textContent = `${text.length} char${text.length === 1 ? '' : 's'}`;
+                }
+            } catch (err) {
+                els.expandedCode.innerHTML = `<span class="cm-comment">// expansion error: ${cmEsc(err.message)}</span>`;
+                els.expandedView.classList.remove('empty');
+                els.expandedView.classList.add('error');
+                els.expandedCount.textContent = 'error';
+                allErrors.push({ line: null, msg: `internal error: ${err.message}` });
+            }
+            renderErrors(allErrors);
+        }
+
+        function renderErrors(errors) {
+            // De-dupe (in case parse+runtime overlap), sort by line.
+            const seen = new Set();
+            const uniq = [];
+            for (const e of errors) {
+                const key = `${e.line || ''}|${e.msg}`;
+                if (!seen.has(key)) { seen.add(key); uniq.push(e); }
+            }
+            uniq.sort((a, b) => (a.line || 1e9) - (b.line || 1e9));
+
+            if (uniq.length === 0) {
+                els.errorStrip.classList.remove('has-errors');
+                els.errorStrip.innerHTML = '';
+                return;
+            }
+            let html = `<div class="error-strip-header">${uniq.length} issue${uniq.length === 1 ? '' : 's'}</div>`;
+            for (const e of uniq) {
+                const lnLabel = e.line ? `L${e.line}` : '—';
+                const cls = e.line ? '' : ' no-line';
+                html += `<div class="error-item${cls}" data-line="${e.line || ''}"><span class="ln">${lnLabel}</span><span class="msg">${cmEsc(e.msg)}</span></div>`;
+            }
+            els.errorStrip.innerHTML = html;
+            els.errorStrip.classList.add('has-errors');
+            // Wire click → jump caret to that line.
+            els.errorStrip.querySelectorAll('.error-item[data-line]').forEach(item => {
+                const lineStr = item.getAttribute('data-line');
+                if (!lineStr) return;
+                item.addEventListener('click', () => jumpToLine(parseInt(lineStr, 10)));
+            });
+        }
+
+        function jumpToLine(lineNo) {
+            const src = els.input.value;
+            const lines = src.split('\n');
+            let pos = 0;
+            for (let i = 0; i < lineNo - 1 && i < lines.length; i++) {
+                pos += lines[i].length + 1;
+            }
+            els.input.focus();
+            els.input.setSelectionRange(pos, pos);
+            // bring the line into view
+            // (approximate: scroll based on line index × line-height)
+            const lineHeight = parseFloat(getComputedStyle(els.input).lineHeight) || 20;
+            els.input.scrollTop = Math.max(0, (lineNo - 3) * lineHeight);
+            syncScroll();
+            updateCaret();
+        }
+
+        // ============================================================================
+        // SPLITTER (drag-resize between left and right panes)
+        // ============================================================================
+
+        function setupSplitter() {
+            let dragging = false, startX = 0, startW = 0;
+            const onDown = (e) => {
+                dragging = true;
+                els.vSplitter.classList.add('dragging');
+                const pt = e.touches ? e.touches[0] : e;
+                startX = pt.clientX;
+                startW = els.paneLeft.getBoundingClientRect().width;
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+                e.preventDefault();
+            };
+            const onMove = (e) => {
+                if (!dragging) return;
+                const pt = e.touches ? e.touches[0] : e;
+                const dx = pt.clientX - startX;
+                const totalW = els.paneLeft.parentElement.getBoundingClientRect().width;
+                const minL = 320, minR = 320;
+                const newW = Math.max(minL, Math.min(totalW - minR - 5, startW + dx));
+                els.paneLeft.style.width = newW + 'px';
+            };
+            const onUp = () => {
+                if (!dragging) return;
+                dragging = false;
+                els.vSplitter.classList.remove('dragging');
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+            };
+            els.vSplitter.addEventListener('mousedown', onDown);
+            els.vSplitter.addEventListener('touchstart', onDown, { passive: false });
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('touchmove', onMove, { passive: false });
+            document.addEventListener('mouseup', onUp);
+            document.addEventListener('touchend', onUp);
+            // Keyboard resize for accessibility
+            els.vSplitter.addEventListener('keydown', (e) => {
+                const step = e.shiftKey ? 40 : 16;
+                if (e.key === 'ArrowLeft') {
+                    const w = els.paneLeft.getBoundingClientRect().width;
+                    els.paneLeft.style.width = Math.max(320, w - step) + 'px';
+                    e.preventDefault();
+                } else if (e.key === 'ArrowRight') {
+                    const w = els.paneLeft.getBoundingClientRect().width;
+                    const total = els.paneLeft.parentElement.getBoundingClientRect().width;
+                    els.paneLeft.style.width = Math.min(total - 320 - 5, w + step) + 'px';
+                    e.preventDefault();
+                }
+            });
+        }
+
+        // ============================================================================
+        // WRAP TOGGLE
+        // ============================================================================
+
+        function setupWrapToggle() {
+            // default: wrap on
+            els.wrapBtn.classList.add('on');
+            els.wrapBtn.setAttribute('aria-pressed', 'true');
+            els.wrapBtn.addEventListener('click', () => {
+                const willWrap = !els.wrapBtn.classList.contains('on');
+                els.wrapBtn.classList.toggle('on', willWrap);
+                els.wrapBtn.setAttribute('aria-pressed', String(willWrap));
+                els.inputPanel.classList.toggle('no-wrap', !willWrap);
+                syncScroll();
+            });
+        }
+
+
+        function renderStep() {
+            if (!currentSteps.length) return;
+            const step = currentSteps[currentStepIdx];
+            els.stepCounter.textContent = `STEP ${currentStepIdx + 1} / ${currentSteps.length}`;
+            els.stepTag.textContent = step.kind.toUpperCase();
+            els.stepTag.className = 'step-tag kind-' + step.kind;
+            els.stepDesc.innerHTML = step.desc;
+
+            els.stream.innerHTML = '';
+            els.stream.appendChild(renderStream(step.tokens, step.marker, macroNames));
+
+            // Scrubber
+            const pct = currentSteps.length > 1
+                ? (currentStepIdx / (currentSteps.length - 1)) * 100
+                : 0;
+            els.scrubFill.style.width = pct + '%';
+            els.scrubHandle.style.left = pct + '%';
+            els.scrubLabel.textContent = `${currentStepIdx + 1} / ${currentSteps.length}`;
+
+            // Button states
+            els.firstBtn.disabled = currentStepIdx === 0;
+            els.prevBtn.disabled = currentStepIdx === 0;
+            els.nextBtn.disabled = currentStepIdx === currentSteps.length - 1;
+            els.lastBtn.disabled = currentStepIdx === currentSteps.length - 1;
+        }
+
+        function goTo(idx) {
+            if (!currentSteps.length) return;
+            currentStepIdx = Math.max(0, Math.min(currentSteps.length - 1, idx));
+            renderStep();
+        }
+
+        function stopPlay() {
+            if (playInterval) {
+                clearInterval(playInterval);
+                playInterval = null;
+                els.playBtn.textContent = '▶';
+            }
+        }
+
+        function togglePlay() {
+            if (playInterval) {
+                stopPlay();
+                return;
+            }
+            if (currentStepIdx >= currentSteps.length - 1) {
+                currentStepIdx = 0;
+            }
+            els.playBtn.textContent = '❚❚';
+            playInterval = setInterval(() => {
+                if (currentStepIdx >= currentSteps.length - 1) {
+                    stopPlay();
+                    return;
+                }
+                goTo(currentStepIdx + 1);
+            }, 700);
+        }
+
+        function run() {
+            stopPlay();
+            const src = els.input.value;
+
+            document.querySelectorAll('.err-banner').forEach(e => e.remove());
+
+            const { commands, errors } = parseInput(src);
+
+            if (errors.length) {
+                const banner = document.createElement('div');
+                banner.className = 'err-banner';
+                banner.textContent = errors.map(e => e.line ? `L${e.line}: ${e.msg}` : e.msg).join('  ·  ');
+                els.rightPane.insertBefore(banner, els.rightPane.firstChild);
+            }
+
+            // Walk commands in source order, building per-segment expansions with the
+            // macros snapshot effective at that point. #define/#undef are state changes
+            // recorded as steps; content segments are run through Preprocessor.process.
+            const macros = new Map();
+            const allSteps = [];
+
+            for (const cmd of commands) {
+                if (cmd.type === 'define') {
+                    macros.set(cmd.name, cmd.macro);
+                    const sig = cmd.macro.kind === 'fn'
+                        ? `${cmd.name}(${cmd.macro.params.join(', ')}${cmd.macro.variadic ? (cmd.macro.params.length ? ', ...' : '...') : ''})`
+                        : cmd.name;
+                    allSteps.push({
+                        kind: 'init',
+                        desc: `Directive: <span class="mono">#define ${escapeHtml(sig)}</span>`,
+                        tokens: [],
+                        marker: null,
+                    });
+                } else if (cmd.type === 'undef') {
+                    macros.delete(cmd.name);
+                    allSteps.push({
+                        kind: 'init',
+                        desc: `Directive: <span class="mono">#undef ${escapeHtml(cmd.name)}</span>`,
+                        tokens: [],
+                        marker: null,
+                    });
+                } else if (cmd.type === 'content') {
+                    const pp = new Preprocessor(new Map(macros));
+                    try {
+                        pp.process(cmd.tokens, true);
+                    } catch (err) {
+                        pp.record('error', `Error during expansion: ${escapeHtml(err.message)}`, cmd.tokens);
+                    }
+                    for (const step of pp.steps) allSteps.push(step);
+                }
+            }
+
+            macroNames = new Set(macros.keys());
+
+            if (allSteps.length === 0) {
+                els.emptyState.style.display = 'block';
+                els.resultView.style.display = 'none';
+                return;
+            }
+
+            currentSteps = allSteps;
+            currentStepIdx = 0;
+            els.emptyState.style.display = 'none';
+            els.resultView.style.display = 'flex';
+
+            if (macros.size > 0) {
+                renderMacroTable(macros);
+                els.macroTable.style.display = 'block';
+            } else {
+                els.macroTable.style.display = 'none';
+            }
+
+            renderStep();
+        }
+
+        // ============================================================================
+        // EXAMPLES
+        // ============================================================================
+
+        const EXAMPLES = {
+            nested:
+                `#define SQUARE(x) ((x) * (x))
+#define DOUBLE(x) ((x) + (x))
+#define COMPOSE(x) SQUARE(DOUBLE(x))
+
+COMPOSE(5)`,
+
+            stringize:
+                `// The classic indirection trick.
+// STR(x) stringizes its arg literally; XSTR(x) goes through one
+// extra level so the arg is macro-expanded first.
+
+#define STR(x)  #x
+#define XSTR(x) STR(x)
+#define VALUE   42
+
+STR(VALUE)   XSTR(VALUE)`,
+
+            paste:
+                `// Token paste. Operands of ## are NOT expanded before pasting,
+// hence the indirection trick (CAT through CAT_).
+
+#define CAT_(a, b) a ## b
+#define CAT(a, b)  CAT_(a, b)
+#define PREFIX     my_
+#define NUM        42
+
+CAT(PREFIX, var)
+CAT(var_, NUM)`,
+
+            prescan:
+                `// Argument prescan demonstration. The arg to OUTER is itself a
+// macro call — it gets fully expanded before being substituted
+// into OUTER's body.
+
+#define INNER(x)  ((x) + 1)
+#define OUTER(y)  [y, y, y]
+
+OUTER(INNER(7))`,
+
+            bluepaint:
+                `// "Blue paint": a macro can't expand itself recursively. After
+// one substitution it's painted and won't be re-expanded.
+
+#define FOO  FOO + 1
+#define BAR  FOO
+
+BAR`,
+
+            bitfield:
+                `// Practical-ish example: build a flag value from named bits.
+
+#define BIT(n)        (1u << (n))
+#define FLAG_READ     BIT(0)
+#define FLAG_WRITE    BIT(1)
+#define FLAG_EXEC     BIT(2)
+#define COMBINE(a, b) ((a) | (b))
+
+COMBINE(FLAG_READ, COMBINE(FLAG_WRITE, FLAG_EXEC))`,
+
+            variadic:
+                `// Variadic macros and __VA_ARGS__ / __VA_OPT__.
+
+#define LOG(fmt, ...) printf(fmt __VA_OPT__(,) __VA_ARGS__)
+
+LOG("no args")
+LOG("one arg: %d", 42)
+LOG("two args: %d %s", 7, "hi")`,
+
+            deferred:
+                `// The classic deferred-expansion / blue-paint demonstration.
+// B(E) and C(E) differ by one rescan layer: C wraps the call in
+// an extra A(...) which gives F() one more pass to "see" its ().
+
+#define A(...)    __VA_ARGS__
+#define B(M, ...) M(__VA_ARGS__)
+#define C(M, ...) A(M(__VA_ARGS__))
+#define D
+#define E()       F D()
+#define F()       A(42)
+
+B(E)
+C(E)`,
+
+            undef:
+                `// #undef: directive processed in source order. Each content segment
+// expands with the macros state at that point.
+
+#define X 1
+X
+#undef X
+X
+#define X 2
+X`,
+
+            rescan_subsequent:
+                `// Rescan extends into source tokens following the invocation.
+// F() expands to G; the rescan then sees the trailing () and invokes G().
+
+#define F() G
+#define G() result
+#define G_arg(x) [x]
+
+F()()
+F G_arg(7)`,
+        };
+
+        els.exampleSelect.addEventListener('change', () => {
+            const v = els.exampleSelect.value;
+            if (EXAMPLES[v]) {
+                els.input.value = EXAMPLES[v];
+                renderEditor();
+                updateExpandedView();
+                run();
+            }
+            els.exampleSelect.value = '0';
+        });
+
+        // ============================================================================
+        // EVENT WIRING
+        // ============================================================================
+
+        els.input.addEventListener('input', () => {
+            renderEditor();
+            schedExpandedUpdate();
+        });
+        els.input.addEventListener('scroll', syncScroll);
+        els.input.addEventListener('keyup', updateCaret);
+        els.input.addEventListener('click', updateCaret);
+        els.input.addEventListener('focus', () => els.editorStage.classList.add('focused'));
+        els.input.addEventListener('blur', () => els.editorStage.classList.remove('focused'));
+
+        els.runBtn.addEventListener('click', run);
+        els.clearBtn.addEventListener('click', () => {
+            els.input.value = '';
+            renderEditor();
+            updateExpandedView();
+            currentSteps = [];
+            els.emptyState.style.display = 'block';
+            els.resultView.style.display = 'none';
+        });
+
+        els.firstBtn.addEventListener('click', () => { stopPlay(); goTo(0); });
+        els.prevBtn.addEventListener('click', () => { stopPlay(); goTo(currentStepIdx - 1); });
+        els.nextBtn.addEventListener('click', () => { stopPlay(); goTo(currentStepIdx + 1); });
+        els.lastBtn.addEventListener('click', () => { stopPlay(); goTo(currentSteps.length - 1); });
+        els.playBtn.addEventListener('click', togglePlay);
+
+        els.scrubber.addEventListener('click', (e) => {
+            stopPlay();
+            if (!currentSteps.length) return;
+            const rect = els.scrubber.getBoundingClientRect();
+            const pct = (e.clientX - rect.left) / rect.width;
+            goTo(Math.round(pct * (currentSteps.length - 1)));
+        });
+
+        let scrubbing = false;
+        els.scrubber.addEventListener('mousedown', () => { scrubbing = true; stopPlay(); });
+        window.addEventListener('mouseup', () => { scrubbing = false; });
+        window.addEventListener('mousemove', (e) => {
+            if (!scrubbing || !currentSteps.length) return;
+            const rect = els.scrubber.getBoundingClientRect();
+            const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            goTo(Math.round(pct * (currentSteps.length - 1)));
+        });
+
+        window.addEventListener('keydown', (e) => {
+            // Ignore when typing in input
+            if (document.activeElement === els.input) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    run();
+                }
+                return;
+            }
+            if (e.key === 'ArrowLeft') { stopPlay(); goTo(currentStepIdx - 1); e.preventDefault(); }
+            if (e.key === 'ArrowRight') { stopPlay(); goTo(currentStepIdx + 1); e.preventDefault(); }
+            if (e.key === 'Home') { stopPlay(); goTo(0); e.preventDefault(); }
+            if (e.key === 'End') { stopPlay(); goTo(currentSteps.length - 1); e.preventDefault(); }
+            if (e.key === ' ') { togglePlay(); e.preventDefault(); }
+        });
+
+        // ============================================================================
+        // INIT
+        // ============================================================================
+
+        setupSplitter();
+        setupWrapToggle();
+        els.input.value = EXAMPLES.nested;
+        renderEditor();
+        updateExpandedView();
+        run();
+
+    </script>
+    <!-- Cloudflare Web Analytics -->
+    <script defer src='https://static.cloudflareinsights.com/beacon.min.js'
+        data-cf-beacon='{"token": "abfffcf5056447628313e8adabcd536c"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+
+</html>
