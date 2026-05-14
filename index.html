@@ -12,25 +12,25 @@
         rel="stylesheet">
     <style>
         :root {
-            --bg-0: #0a0d12;
-            --bg-1: #11151c;
-            --bg-2: #161b24;
-            --bg-3: #1d242f;
-            --line: #232b38;
-            --line-bright: #2e3949;
-            --fg-0: #d8dee9;
-            --fg-1: #a4adbd;
-            --fg-2: #6c7689;
-            --fg-3: #444e5f;
-            --accent: #7dd3fc;
-            --accent-dim: #38516a;
-            --warm: #fbbf24;
-            --warm-dim: #6a4f1c;
-            --green: #86efac;
-            --green-dim: #2d4a36;
-            --rose: #fda4af;
-            --violet: #c4b5fd;
-            --error: #ef4444;
+            --bg-0: #0c0f15;
+            --bg-1: #131820;
+            --bg-2: #191f2b;
+            --bg-3: #1f2836;
+            --line: #242e3c;
+            --line-bright: #2d3a4c;
+            --fg-0: #d4dae6;
+            --fg-1: #9da6b6;
+            --fg-2: #627282;
+            --fg-3: #3e4e60;
+            --accent: #70b8d0;
+            --accent-dim: #1c3c50;
+            --warm: #c4a048;
+            --warm-dim: #3a2a0a;
+            --green: #88b888;
+            --green-dim: #1e3420;
+            --rose: #c07880;
+            --violet: #a888b8;
+            --error: #c07080;
         }
 
         * {
@@ -69,7 +69,7 @@
             margin: 0;
             font-family: 'Fraunces', serif;
             font-weight: 500;
-            font-size: 22px;
+            font-size: 24px;
             letter-spacing: -0.01em;
             color: var(--fg-0);
         }
@@ -81,8 +81,8 @@
         }
 
         header .subtitle {
-            color: var(--fg-2);
-            font-size: 11px;
+            color: var(--fg-1);
+            font-size: 12px;
             letter-spacing: 0.05em;
             text-transform: uppercase;
         }
@@ -139,8 +139,8 @@
         }
 
         button.primary:hover {
-            background: #93dffe;
-            border-color: #93dffe;
+            background: #88c8de;
+            border-color: #88c8de;
         }
 
         button:disabled {
@@ -267,7 +267,7 @@
 
         .step-tag.kind-rescan {
             color: var(--rose);
-            border-color: #6a3a40;
+            border-color: #3e2028;
         }
 
         .step-tag.kind-done {
@@ -420,9 +420,9 @@
         }
 
         .err-banner {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.4);
-            color: #fca5a5;
+            background: rgba(192, 120, 128, 0.10);
+            border: 1px solid rgba(192, 120, 128, 0.30);
+            color: #c07880;
             padding: 10px 14px;
             margin: 18px 24px;
             border-radius: 3px;
@@ -562,7 +562,7 @@
         }
 
         .pane-left {
-            width: var(--left-w, 460px);
+            width: var(--left-w, 40%);
             flex: 0 0 auto;
             min-width: 320px;
             max-width: 75vw;
@@ -644,9 +644,9 @@
             font-size: 9px;
             letter-spacing: 0.08em;
             text-transform: uppercase;
-            color: var(--fg-3);
-            background: transparent;
-            border: 1px solid var(--line);
+            color: var(--fg-2);
+            background: var(--bg-2);
+            border: 1px solid var(--line-bright);
             padding: 3px 7px;
             border-radius: 3px;
             cursor: pointer;
@@ -654,14 +654,14 @@
         }
 
         .toggle-btn:hover {
-            color: var(--fg-1);
-            border-color: var(--line-bright);
+            color: var(--fg-0);
+            border-color: var(--fg-3);
         }
 
         .toggle-btn.on {
             color: var(--accent);
             border-color: var(--accent-dim);
-            background: rgba(125, 211, 252, 0.06);
+            background: rgba(112, 184, 208, 0.08);
         }
 
         .editor-wrap {
@@ -941,28 +941,28 @@
 
         /* C / C++ syntax theme — shared by overlay + expanded pane */
         .cm-comment {
-            color: #5e6878;
+            color: #4a5868;
             font-style: italic;
         }
 
         .cm-string {
-            color: #f0b27a;
+            color: #88b888;
         }
 
         .cm-char {
-            color: #f0b27a;
+            color: #88b888;
         }
 
         .cm-number {
-            color: #c1d59f;
+            color: #a888b8;
         }
 
         .cm-keyword {
-            color: var(--warm);
+            color: #6890b8;
         }
 
         .cm-type {
-            color: var(--accent);
+            color: #6aaab8;
         }
 
         .cm-predef {
@@ -970,24 +970,24 @@
         }
 
         .cm-macro {
-            color: #f4d07f;
+            color: var(--warm);
         }
 
         .cm-fn {
-            color: #f4d07f;
+            color: var(--accent);
         }
 
         .cm-meta {
-            color: var(--rose);
+            color: #b87858;
         }
 
         .cm-meta-kw {
-            color: var(--rose);
+            color: #b87858;
             font-weight: 600;
         }
 
         .cm-operator {
-            color: #a3aebf;
+            color: #6080a0;
         }
 
         .cm-punct {
@@ -1020,6 +1020,7 @@
                 <option value="deferred">deferred expansion (B/C/E/F)</option>
                 <option value="undef">#undef</option>
                 <option value="rescan_subsequent">rescan into subsequent tokens</option>
+                <option value="ws_and_comments">whitespace &amp; comment edge cases</option>
             </select>
         </div>
     </header>
@@ -1032,7 +1033,7 @@
                     <div class="actions">
                         <span class="count" id="inputCount">0 lines</span>
                         <button class="toggle-btn" id="wrapBtn" title="toggle line wrap"
-                            aria-pressed="true">wrap</button>
+                            aria-pressed="true">toggle line wrapping</button>
                     </div>
                 </div>
                 <div class="editor-wrap">
@@ -1221,6 +1222,32 @@
                     continue;
                 }
 
+                // Digraphs (§6.4.6) — longest match first
+                if (c === '%' && src[i + 1] === ':' && src[i + 2] === '%' && src[i + 3] === ':') {
+                    tokens.push({ type: 'hashhash', value: '##', line: tokLine });
+                    i += 4; continue;
+                }
+                if (c === '%' && src[i + 1] === ':') {
+                    tokens.push({ type: 'hash', value: '#', line: tokLine });
+                    i += 2; continue;
+                }
+                if (c === '<' && src[i + 1] === ':') {
+                    tokens.push({ type: 'punct', value: '[', line: tokLine });
+                    i += 2; continue;
+                }
+                if (c === ':' && src[i + 1] === '>') {
+                    tokens.push({ type: 'punct', value: ']', line: tokLine });
+                    i += 2; continue;
+                }
+                if (c === '<' && src[i + 1] === '%') {
+                    tokens.push({ type: 'punct', value: '{', line: tokLine });
+                    i += 2; continue;
+                }
+                if (c === '%' && src[i + 1] === '>') {
+                    tokens.push({ type: 'punct', value: '}', line: tokLine });
+                    i += 2; continue;
+                }
+
                 // multi-char punctuators (basic set)
                 const two = src.substr(i, 2);
                 if (['==', '!=', '<=', '>=', '&&', '||', '<<', '>>', '++', '--', '->', '+=', '-=', '*=', '/=', '%=', '&=', '|=', '^='].includes(two)) {
@@ -1292,7 +1319,20 @@
                     contentBuf += '\n';
                     continue;
                 }
-                if (line.startsWith('#')) {
+
+                // Normalize for directive detection: strip leading block-comments
+                // (/**/#define X → #define X) then collapse comments between #
+                // and the directive keyword (#/**/define X → #define X).
+                // Comments become whitespace in translation phase 3, so both
+                // forms are well-formed before directive recognition in phase 4.
+                let directiveLine = line;
+                while (/^\/\*[^]*?\*\//.test(directiveLine))
+                    directiveLine = directiveLine.replace(/^\/\*[^]*?\*\//, '').trimStart();
+                if (directiveLine.startsWith('%:'))
+                    directiveLine = '#' + directiveLine.slice(2);
+                directiveLine = directiveLine.replace(/^(#\s*)(?:\/\*[^]*?\*\/\s*)*/g, '$1');
+
+                if (directiveLine.startsWith('#')) {
                     // Keep line counting aligned with source regardless of which branch we
                     // take below (the trailing '\n' is harmless as trailing whitespace for
                     // flushing branches, and required to advance the counter for non-
@@ -1302,19 +1342,19 @@
                     // Detect unclosed function-like param list early: `name(` with no
                     // matching `)` on the directive line. (Space before `(` would mean
                     // object-like, which is fine.)
-                    const unclosedFn = line.match(/^#\s*define\s+(\w+)\(/);
-                    if (unclosedFn && !/^#\s*define\s+\w+\([^)]*\)/.test(line)) {
+                    const unclosedFn = directiveLine.match(/^#\s*define\s+(\w+)\(/);
+                    if (unclosedFn && !/^#\s*define\s+\w+\([^)]*\)/.test(directiveLine)) {
                         errors.push({ line: lineNo, msg: `unclosed parameter list in #define ${unclosedFn[1]}` });
                         flush();
                         contentStartLine = lineNo + 1;
                         continue;
                     }
 
-                    const defM = line.match(/^#\s*define\s+(\w+)(\([^)]*\))?(.*)$/);
-                    const undefM = line.match(/^#\s*undef\s+(\w+)\s*$/);
-                    const defNoNameM = !defM && /^#\s*define\b/.test(line);
-                    const undefNoNameM = !undefM && /^#\s*undef\b/.test(line);
-                    const defUnclosedParamM = !defM && /^#\s*define\s+\w+\s*\(/.test(line);
+                    const defM = directiveLine.match(/^#\s*define\s+(\w+)(\([^)]*\))?(.*)$/);
+                    const undefM = directiveLine.match(/^#\s*undef\s+(\w+)\s*$/);
+                    const defNoNameM = !defM && /^#\s*define\b/.test(directiveLine);
+                    const undefNoNameM = !undefM && /^#\s*undef\b/.test(directiveLine);
+                    const defUnclosedParamM = !defM && /^#\s*define\s+\w+\s*\(/.test(directiveLine);
 
                     if (defM) {
                         flush();
@@ -1340,9 +1380,9 @@
                                     params.push(rawParams[pi]);
                                 }
                             }
-                            macro = { kind: 'fn', name, params, variadic, body: tokenize(bodySrc, errors, lineNo) };
+                            macro = { kind: 'fn', name, params, variadic, body: trimWs(tokenize(bodySrc, errors, lineNo)) };
                         } else {
-                            macro = { kind: 'obj', name, body: tokenize(bodySrc, errors, lineNo) };
+                            macro = { kind: 'obj', name, body: trimWs(tokenize(bodySrc, errors, lineNo)) };
                         }
                         commands.push({ type: 'define', name, macro, line: lineNo });
                     } else if (undefM) {
@@ -1355,8 +1395,8 @@
                         errors.push({ line: lineNo, msg: `#define is missing a macro name` });
                     } else if (undefNoNameM) {
                         errors.push({ line: lineNo, msg: `#undef is missing a macro name` });
-                    } else if (/^#\s*(if|ifdef|ifndef|else|elif|elifdef|elifndef|endif|include|pragma|error|warning|line|embed)\b/.test(line)) {
-                        errors.push({ line: lineNo, msg: `directive '#${line.match(/^#\s*(\w+)/)[1]}' not supported by this simulator` });
+                    } else if (/^#\s*(if|ifdef|ifndef|else|elif|elifdef|elifndef|endif|include|pragma|error|warning|line|embed)\b/.test(directiveLine)) {
+                        errors.push({ line: lineNo, msg: `directive '#${directiveLine.match(/^#\s*(\w+)/)[1]}' not supported by this simulator` });
                     } else {
                         errors.push({ line: lineNo, msg: `unrecognized directive: ${line}` });
                     }
@@ -1444,119 +1484,185 @@
                 });
             }
 
-            // collectArgs returns [args, argPositions, closeIdx] or null on unterminated.
-            collectArgs(tokens, openIdx) {
-                const args = [];
-                const argPositions = [];
-                let cur = [];
-                let curStart = openIdx + 1;
-                let depth = 0;
-                let i = openIdx + 1;
-                while (i < tokens.length) {
-                    const t = tokens[i];
-                    if (t.value === '(') { depth++; cur.push(t); i++; continue; }
-                    if (t.value === ')') {
-                        if (depth === 0) {
-                            if (cur.length > 0 || args.length > 0) {
-                                args.push(cur);
-                                argPositions.push({ start: curStart, end: i });
-                            }
-                            return [args, argPositions, i];
-                        }
-                        depth--; cur.push(t); i++; continue;
-                    }
-                    if (t.value === ',' && depth === 0) {
-                        args.push(cur);
-                        argPositions.push({ start: curStart, end: i });
-                        cur = [];
-                        i++;
-                        curStart = i;
-                        continue;
-                    }
-                    cur.push(t); i++;
-                }
-                return null;
-            }
-
-            // Iterative-splicing process. The "rescan" of a substitution result is the
-            // next loop iteration after splicing — which naturally considers all
-            // subsequent source tokens (the C23 §6.10.5.6 requirement).
-            // Per-token `hide` Set tracks which macros each token must not re-trigger.
+            // Context-stack expansion (cpplib / Clang style). See specval/pp.js
+            // for the algorithmic narrative — this version mirrors that logic
+            // and additionally emits trace records for the visualizer.
+            //
+            // For each step's token-stream snapshot, we flatten the live state
+            // as: output emitted so far ++ remaining tokens of every live
+            // context (top-of-stack first). Markers point into this flattened
+            // view — `active` highlights the next thing to be processed,
+            // `new` highlights what was just substituted.
             process(initialTokens, recordInitDone = true) {
-                let tokens = initialTokens.map(t => ({
+                const seeded = initialTokens.map(t => ({
                     ...t,
                     hide: t.hide ? new Set(t.hide) : new Set()
                 }));
 
                 if (recordInitDone) {
-                    this.record('init', `Initial: <span class="mono">${escapeHtml(detok(trimWs(tokens)))}</span>`, tokens, null);
+                    this.record('init', `Initial: <span class="mono">${escapeHtml(detok(trimWs(seeded)))}</span>`, seeded, null);
                 }
 
-                let i = 0;
-                let iters = 0;
-                const ITER_LIMIT = 100000;
+                const result = this._expand(seeded, null);
 
-                while (i < tokens.length) {
-                    if (++iters > ITER_LIMIT) {
-                        this.record('error', 'Expansion exceeded safety iteration limit (possible runaway).', tokens);
-                        return tokens;
+                if (recordInitDone) {
+                    this.record('done', `Final: <span class="mono">${escapeHtml(detok(trimWs(result)) || '∅')}</span>`, result, null);
+                }
+                return result;
+            }
+
+            // Snapshot the live token stream as one flat array for trace UI.
+            _flatten(output, ctxs) {
+                const flat = output.slice();
+                for (let ci = ctxs.length - 1; ci >= 0; ci--) {
+                    const ctx = ctxs[ci];
+                    for (let p = ctx.pos; p < ctx.tokens.length; p++) flat.push(ctx.tokens[p]);
+                }
+                return flat;
+            }
+
+            _expand(initialTokens, outerActive) {
+                const ctxs = [{ tokens: initialTokens, pos: 0, macro: null }];
+                const output = [];
+
+                const isActive = (name) => {
+                    if (outerActive && outerActive.has(name)) return true;
+                    for (const ctx of ctxs) if (ctx.macro === name) return true;
+                    return false;
+                };
+
+                const popExhausted = () => {
+                    while (ctxs.length > 0) {
+                        const top = ctxs[ctxs.length - 1];
+                        if (top.pos < top.tokens.length) return;
+                        ctxs.pop();
                     }
+                };
 
-                    const tok = tokens[i];
+                const consume = () => {
+                    popExhausted();
+                    if (ctxs.length === 0) return null;
+                    const top = ctxs[ctxs.length - 1];
+                    return top.tokens[top.pos++];
+                };
 
-                    if (tok.type !== 'id' || tok.hide.has(tok.value) || !this.macros.has(tok.value)) {
-                        i++;
+                const peekNonWs = () => {
+                    for (let ci = ctxs.length - 1; ci >= 0; ci--) {
+                        const ctx = ctxs[ci];
+                        for (let p = ctx.pos; p < ctx.tokens.length; p++) {
+                            if (ctx.tokens[p].type !== 'ws') return ctx.tokens[p];
+                        }
+                    }
+                    return null;
+                };
+
+                const collectArgsFromStream = () => {
+                    while (true) {
+                        popExhausted();
+                        if (ctxs.length === 0) return null;
+                        const top = ctxs[ctxs.length - 1];
+                        const t = top.tokens[top.pos];
+                        if (t.type === 'ws') { top.pos++; continue; }
+                        if (t.value === '(') { top.pos++; break; }
+                        return null;
+                    }
+                    const args = [];
+                    let cur = [];
+                    let depth = 0;
+                    while (true) {
+                        const t = consume();
+                        if (t === null) return null;
+                        if (t.value === '(') { depth++; cur.push(t); continue; }
+                        if (t.value === ')') {
+                            if (depth === 0) {
+                                // Only push cur if it contains non-whitespace tokens OR
+                                // we already have prior args. Pure-whitespace content
+                                // between parens (e.g. F(\n)) is not a pp-token and
+                                // must not count as an argument.
+                                if (trimWs(cur).length > 0 || args.length > 0) args.push(cur);
+                                return args;
+                            }
+                            depth--; cur.push(t); continue;
+                        }
+                        if (t.value === ',' && depth === 0) {
+                            args.push(cur); cur = []; continue;
+                        }
+                        cur.push(t);
+                    }
+                };
+
+                let iters = 0;
+                const ITER_LIMIT = 10000000;
+
+                while (true) {
+                    if (++iters > ITER_LIMIT) {
+                        this.record('error', 'Expansion exceeded safety iteration limit (possible runaway).',
+                            this._flatten(output, ctxs));
+                        return output;
+                    }
+                    popExhausted();
+                    if (ctxs.length === 0) break;
+                    const tok = consume();
+                    if (tok === null) break;
+
+                    if (tok.type !== 'id') { output.push(tok); continue; }
+
+                    const name = tok.value;
+                    if (tok.hide && tok.hide.has(name)) { output.push(tok); continue; }
+                    if (!this.macros.has(name)) { output.push(tok); continue; }
+                    if (isActive(name)) {
+                        const newHide = new Set(tok.hide || []);
+                        newHide.add(name);
+                        output.push({ ...tok, hide: newHide });
                         continue;
                     }
 
-                    const macro = this.macros.get(tok.value);
+                    const macro = this.macros.get(name);
 
                     if (macro.kind === 'obj') {
-                        // §6.10.5.5: ## processing happens for both object-like
-                        // and function-like bodies. Route obj-like bodies through
-                        // substitute() with empty params so any ## in the body
-                        // is handled.
                         const substituted = this.substitute(macro.body, [], [], []);
-                        const newHide = new Set(tok.hide); newHide.add(macro.name);
-                        const replacement = substituted.map(b => ({
-                            ...b,
-                            hide: new Set([...(b.hide || []), ...newHide])
-                        }));
 
+                        const beforeFlat = this._flatten(output, ctxs);
+                        // The macro identifier was just consumed so it isn't in
+                        // `ctxs` anymore — show it where it just left from.
+                        const namePos = output.length;
+                        const beforeWithName = output.concat([tok], beforeFlat.slice(output.length));
                         this.record(
                             'found',
                             `Found object-like macro <span class="mono">${escapeHtml(macro.name)}</span> → replacing with body.`,
-                            tokens,
-                            { start: i, end: i + 1, kind: 'active' }
+                            beforeWithName,
+                            { start: namePos, end: namePos + 1, kind: 'active' }
                         );
 
-                        tokens = tokens.slice(0, i).concat(replacement, tokens.slice(i + 1));
+                        ctxs.push({ tokens: substituted, pos: 0, macro: name });
 
+                        const afterFlat = this._flatten(output, ctxs);
                         this.record(
                             'subst',
                             `Substituted body of <span class="mono">${escapeHtml(macro.name)}</span>: <span class="mono">${escapeHtml(detok(trimWs(macro.body)) || '∅')}</span>`,
-                            tokens,
-                            { start: i, end: i + replacement.length, kind: 'new' }
+                            afterFlat,
+                            { start: output.length, end: output.length + substituted.length, kind: 'new' }
                         );
-                        continue;  // re-process from i (rescan)
-                    }
-
-                    // Function-like
-                    let j = i + 1;
-                    while (j < tokens.length && tokens[j].type === 'ws') j++;
-                    if (j >= tokens.length || tokens[j].value !== '(') {
-                        i++;
                         continue;
                     }
 
-                    const argResult = this.collectArgs(tokens, j);
-                    if (!argResult) {
-                        this.record('error', `Unterminated argument list for <span class="mono">${escapeHtml(macro.name)}</span>.`, tokens, null);
-                        return tokens;
-                    }
-                    const [rawArgs, , closeIdx] = argResult;
+                    const next = peekNonWs();
+                    if (!next || next.value !== '(') { output.push(tok); continue; }
 
-                    // §6.10.5.1: M() = 0 args iff macro takes 0 params; else 1 empty arg.
+                    // For tracing: snapshot the call site BEFORE we consume
+                    // its arg list. We rebuild a flat view that includes the
+                    // macro identifier (just consumed) so the marker can point
+                    // at the whole `name(...)` span.
+                    const beforeArgsFlat = output.concat([tok], this._flatten(output, ctxs).slice(output.length));
+                    const namePos = output.length;
+
+                    const rawArgs = collectArgsFromStream();
+                    if (rawArgs === null) {
+                        this.record('error', `Unterminated argument list for <span class="mono">${escapeHtml(macro.name)}</span>.`,
+                            beforeArgsFlat, { start: namePos, end: namePos + 1, kind: 'active' });
+                        return output;
+                    }
+
                     let args = rawArgs;
                     if (args.length === 0 && macro.params.length > 0) args = [[]];
 
@@ -1567,10 +1673,17 @@
                         this.record(
                             'error',
                             `<span class="mono">${escapeHtml(macro.name)}</span> expects ${needs} arg(s), got ${args.length}.`,
-                            tokens,
-                            { start: i, end: closeIdx + 1, kind: 'active' }
+                            beforeArgsFlat,
+                            { start: namePos, end: namePos + 1, kind: 'active' }
                         );
-                        i = closeIdx + 1;
+                        // Emit the call verbatim so the surface text is preserved.
+                        output.push(tok);
+                        output.push({ type: 'punct', value: '(', hide: new Set() });
+                        for (let k = 0; k < rawArgs.length; k++) {
+                            if (k > 0) output.push({ type: 'punct', value: ',', hide: new Set() });
+                            for (const at of rawArgs[k]) output.push(at);
+                        }
+                        output.push({ type: 'punct', value: ')', hide: new Set() });
                         continue;
                     }
 
@@ -1599,69 +1712,53 @@
                     this.record(
                         'found',
                         `Found function-like macro <span class="mono">${escapeHtml(macro.name)}</span>${macro.variadic ? ' (variadic)' : ''} with ${allArgs.length} arg(s): ${argDisplay}`,
-                        tokens,
-                        { start: i, end: closeIdx + 1, kind: 'active' }
+                        beforeArgsFlat,
+                        { start: namePos, end: namePos + 1, kind: 'active' }
                     );
 
-                    // §6.10.5.2: prescan args in independent contexts.
                     const prescanned = [];
                     for (let k = 0; k < allArgs.length; k++) {
                         const before = detok(trimWs(allArgs[k]));
                         const subPP = new Preprocessor(this.macros);
-                        const argInput = allArgs[k].map(t => ({ ...t, hide: t.hide ? new Set(t.hide) : new Set() }));
-                        const expanded = subPP.process(argInput, false);
+                        // §6.10.5.1: args are prescanned "as if they were a
+                        // translated preprocessing file" — completely fresh,
+                        // no outer macro's active-set inherited.
+                        const expanded = subPP._expand(
+                            allArgs[k].map(t => ({ ...t, hide: t.hide ? new Set(t.hide) : new Set() })),
+                            null
+                        );
                         prescanned.push(expanded);
                         const after = detok(trimWs(expanded));
+                        const argFlat = this._flatten(output, ctxs);
                         if (before === after) {
                             this.record(
                                 'arg',
                                 `Arg <span class="mono">${escapeHtml(effectiveParams[k])}</span> = <span class="mono">${escapeHtml(before || '∅')}</span> — no expansion.`,
-                                tokens,
-                                { start: i, end: closeIdx + 1, kind: 'active' }
+                                argFlat, null
                             );
                         } else {
                             this.record(
                                 'arg',
                                 `Arg <span class="mono">${escapeHtml(effectiveParams[k])}</span> prescanned: <span class="mono">${escapeHtml(before)}</span> → <span class="mono">${escapeHtml(after)}</span>`,
-                                tokens,
-                                { start: i, end: closeIdx + 1, kind: 'active' }
+                                argFlat, null
                             );
                         }
                     }
 
                     const substituted = this.substitute(macro.body, effectiveParams, allArgs, prescanned);
 
-                    // §6.10.5.6 / Prosser fn-like rule: invocation's hide-set
-                    // is the intersection of the name token's and the closing-
-                    // paren's hide-sets, plus the macro itself. The intersection
-                    // is what lets `M(...)` invocations whose `)` came from
-                    // outside M's body escape M's hide (so the FOR_EACH /
-                    // END_END chain trick works), while keeping cycle painting
-                    // intact when `(` and `)` are both inside the outer body.
-                    const closeHide = tokens[closeIdx].hide || new Set();
-                    const newHide = new Set();
-                    for (const h of tok.hide) if (closeHide.has(h)) newHide.add(h);
-                    newHide.add(macro.name);
-                    const final = substituted.map(t => ({
-                        ...t,
-                        hide: new Set([...(t.hide || []), ...newHide])
-                    }));
+                    ctxs.push({ tokens: substituted, pos: 0, macro: name });
 
-                    tokens = tokens.slice(0, i).concat(final, tokens.slice(closeIdx + 1));
-
+                    const afterFlat = this._flatten(output, ctxs);
                     this.record(
                         'subst',
-                        `Substituted body of <span class="mono">${escapeHtml(macro.name)}</span>: <span class="mono">${escapeHtml(detok(trimWs(final)) || '∅')}</span>`,
-                        tokens,
-                        { start: i, end: i + final.length, kind: 'new' }
+                        `Substituted body of <span class="mono">${escapeHtml(macro.name)}</span>: <span class="mono">${escapeHtml(detok(trimWs(substituted)) || '∅')}</span>`,
+                        afterFlat,
+                        { start: output.length, end: output.length + substituted.length, kind: 'new' }
                     );
-                    // Don't advance i — rescan from here.
                 }
 
-                if (recordInitDone) {
-                    this.record('done', `Final: <span class="mono">${escapeHtml(detok(trimWs(tokens)) || '∅')}</span>`, tokens, null);
-                }
-                return tokens;
+                return output;
             }
 
             // Substitute params in body. Handles #, ##, __VA_OPT__. Spec-correct
@@ -1716,6 +1813,26 @@
                     if (t.type === 'hash') {
                         const j = nextNonWs(i + 1);
                         if (j < body.length && body[j].type === 'id') {
+                            // §6.10.3.6: # __VA_OPT__(content) — stringize the VA_OPT expansion as a unit
+                            if (body[j].value === '__VA_OPT__') {
+                                const k0 = nextNonWs(j + 1);
+                                if (k0 < body.length && body[k0].value === '(') {
+                                    let depth = 1, k = k0 + 1;
+                                    while (k < body.length && depth > 0) {
+                                        if (body[k].value === '(') depth++;
+                                        else if (body[k].value === ')') { depth--; if (depth === 0) break; }
+                                        k++;
+                                    }
+                                    if (k < body.length && body[k].value === ')') {
+                                        const vaIdx = paramIdx('__VA_ARGS__');
+                                        const vaEmpty = vaIdx < 0 || trimWs(args[vaIdx]).length === 0;
+                                        const expanded = vaEmpty ? [] : this.substitute(body.slice(k0 + 1, k), params, args, prescanned);
+                                        result.push({ type: 'str', value: stringizeArg(expanded), hide: new Set() });
+                                        i = k + 1;
+                                        continue;
+                                    }
+                                }
+                            }
                             const pi = paramIdx(body[j].value);
                             if (pi >= 0) {
                                 result.push({ type: 'str', value: stringizeArg(args[pi]), hide: new Set() });
@@ -2274,9 +2391,10 @@
         // ============================================================================
 
         function setupWrapToggle() {
-            // default: wrap on
-            els.wrapBtn.classList.add('on');
-            els.wrapBtn.setAttribute('aria-pressed', 'true');
+            // default: wrap off
+            els.wrapBtn.classList.remove('on');
+            els.wrapBtn.setAttribute('aria-pressed', 'false');
+            els.inputPanel.classList.add('no-wrap');
             els.wrapBtn.addEventListener('click', () => {
                 const willWrap = !els.wrapBtn.classList.contains('on');
                 els.wrapBtn.classList.toggle('on', willWrap);
@@ -2530,6 +2648,33 @@ X`,
 
 F()()
 F G_arg(7)`,
+
+            ws_and_comments:
+                `// Whitespace and block-comment edge cases.
+
+// 1. 0-param macro invoked with only whitespace between parens.
+//    The newline is not a preprocessing token — treated as 0 args.
+#define EMPTY() [empty]
+EMPTY(
+)
+
+// 2. Block comments in the body become whitespace (phase 3), then
+//    the replacement list trims leading/trailing ws.  F expands to
+//    just 42, not " 42 ", so stringization gives "(42)" not "( 42 )".
+#define S(...)S_(__VA_ARGS__)
+#define S_(...)#__VA_ARGS__
+#define F/**/42/**/
+S((F))
+
+// 3. A block comment before # is phase-3 whitespace — the line is
+//    still a valid directive.
+/**/#define BEFORE ok
+BEFORE
+
+// 4. A block comment between # and the directive keyword is also
+//    phase-3 whitespace.
+#/**/define WITHIN ok
+WITHIN`,
         };
 
         els.exampleSelect.addEventListener('change', () => {

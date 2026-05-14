@@ -48,4 +48,11 @@ t('whitespace-only arg substitutes to nothing',
 t('arg with wrapping ws strips the wrapping ws on substitution',
   `#define F(x) [x]\nF(  hi  )`, `[hi]`);
 
+// 0-param macro invoked with only whitespace between parens: must be 0 args,
+// not 1 spurious whitespace-only arg (which would cause an arity mismatch).
+t('0-param: spaces between parens → expands (not arity mismatch)',
+  `#define F() ok\nF(  )`, `ok`);
+t('0-param: newline between parens → expands (not arity mismatch)',
+  `#define F() ok\nF(\n)`, `ok`);
+
 summary('§6.10.5.1 arg parsing');

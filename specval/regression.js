@@ -59,4 +59,38 @@ t('painted token resists later expansion',
 A(B)`,
   `B + 1 B + 1`);
 
+// Block-comment whitespace in body must be stripped (replacement list excludes
+// leading/trailing whitespace; comments become spaces in phase 3).
+t('block comment at start of body stripped',
+  `#define F/**/42\nF`, `42`);
+t('block comments wrapping body value stripped',
+  `#define F/**/42/**/\nF`, `42`);
+t('comment body-ws not leaked into stringization',
+  `#define S(...)S_(__VA_ARGS__)\n#define S_(...)#__VA_ARGS__\n#define F/**/42/**/\nS((F))`,
+  `"(42)"`);
+
+// Block comments before or within the # directive marker must be normalized
+// away before directive recognition (translation phase 3 → phase 4 ordering).
+t('leading block comment before #define recognized',
+  `/**/#define X ok\nX`, `ok`);
+t('block comment between # and define keyword recognized',
+  `#/**/define X ok\nX`, `ok`);
+
+// §6.4.6 Digraphs — %: → #, %:%: → ##, <: → [, :> → ], <% → {, %> → }
+t('digraph %:define recognized as directive',
+  `%:define X 42\nX`, `42`);
+t('digraph %: stringize in body',
+  `%:define STR(x) %:x\nSTR(hi)`, `"hi"`);
+t('digraph %:%: paste in body',
+  `%:define CAT(a,b) a%:%:b\nCAT(foo,bar)`, `foobar`);
+t('digraph <: and :> as brackets',
+  `%:define F(x) x<:0:>\nF(arr)`, `arr[0]`);
+
+// §6.10.3.6: # __VA_OPT__(content) stringizes the VA_OPT expansion as a unit;
+// empty VA_ARGS → VA_OPT disappears → stringize empty → ""
+t('#__VA_OPT__ empty VA_ARGS stringizes to empty string',
+  `#define S(...)#__VA_OPT__(__VA_ARGS__)\nS()`, `""`);
+t('#__VA_OPT__ non-empty VA_ARGS stringizes content',
+  `#define S(...)#__VA_OPT__(__VA_ARGS__)\nS(a,b)`, `"a,b"`);
+
 summary('regression 34');

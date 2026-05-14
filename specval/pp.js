@@ -93,6 +93,31 @@ function tokenize(src, errors, startLine) {
       i++;
       continue;
     }
+    // Digraphs (§6.4.6) — longest match first
+    if (c === '%' && src[i+1] === ':' && src[i+2] === '%' && src[i+3] === ':') {
+      tokens.push({ type: 'hashhash', value: '##', line: tokLine });
+      i += 4; continue;
+    }
+    if (c === '%' && src[i+1] === ':') {
+      tokens.push({ type: 'hash', value: '#', line: tokLine });
+      i += 2; continue;
+    }
+    if (c === '<' && src[i+1] === ':') {
+      tokens.push({ type: 'punct', value: '[', line: tokLine });
+      i += 2; continue;
+    }
+    if (c === ':' && src[i+1] === '>') {
+      tokens.push({ type: 'punct', value: ']', line: tokLine });
+      i += 2; continue;
+    }
+    if (c === '<' && src[i+1] === '%') {
+      tokens.push({ type: 'punct', value: '{', line: tokLine });
+      i += 2; continue;
+    }
+    if (c === '%' && src[i+1] === '>') {
+      tokens.push({ type: 'punct', value: '}', line: tokLine });
+      i += 2; continue;
+    }
     const two = src.substr(i, 2);
     if (['==','!=','<=','>=','&&','||','<<','>>','++','--','->','+=','-=','*=','/=','%=','&=','|=','^='].includes(two)) {
       tokens.push({ type: 'punct', value: two, line: tokLine });
@@ -154,22 +179,34 @@ function parseInput(source) {
       contentBuf += '\n';
       continue;
     }
-    if (line.startsWith('#')) {
+
+    // Normalize for directive detection: strip leading block-comments
+    // (/**/#define X → #define X) then collapse comments between # and the
+    // directive keyword (#/**/define X → #define X).  Comments are replaced
+    // by whitespace in translation phase 3, so both forms are well-formed.
+    // Also map the %: digraph to # so %:define X is recognized as a directive.
+    let directiveLine = line;
+    while (/^\/\*[^]*?\*\//.test(directiveLine))
+      directiveLine = directiveLine.replace(/^\/\*[^]*?\*\//, '').trimStart();
+    if (directiveLine.startsWith('%:'))
+      directiveLine = '#' + directiveLine.slice(2);
+    directiveLine = directiveLine.replace(/^(#\s*)(?:\/\*[^]*?\*\/\s*)*/g, '$1');
+
+    if (directiveLine.startsWith('#')) {
       contentBuf += '\n';   // keep line counting aligned
 
-      // Unclosed fn-like param list — detect before main regex
-      const unclosedFn = line.match(/^#\s*define\s+(\w+)\(/);
-      if (unclosedFn && !/^#\s*define\s+\w+\([^)]*\)/.test(line)) {
+      const unclosedFn = directiveLine.match(/^#\s*define\s+(\w+)\(/);
+      if (unclosedFn && !/^#\s*define\s+\w+\([^)]*\)/.test(directiveLine)) {
         errors.push({ line: lineNo, msg: `unclosed parameter list in #define ${unclosedFn[1]}` });
         flush();
         contentStartLine = lineNo + 1;
         continue;
       }
 
-      const defM = line.match(/^#\s*define\s+(\w+)(\([^)]*\))?(.*)$/);
-      const undefM = line.match(/^#\s*undef\s+(\w+)\s*$/);
-      const defNoNameM = !defM && /^#\s*define\b/.test(line);
-      const undefNoNameM = !undefM && /^#\s*undef\b/.test(line);
+      const defM = directiveLine.match(/^#\s*define\s+(\w+)(\([^)]*\))?(.*)$/);
+      const undefM = directiveLine.match(/^#\s*undef\s+(\w+)\s*$/);
+      const defNoNameM = !defM && /^#\s*define\b/.test(directiveLine);
+      const undefNoNameM = !undefM && /^#\s*undef\b/.test(directiveLine);
 
       if (defM) {
         flush();
@@ -195,9 +232,9 @@ function parseInput(source) {
               params.push(rawParams[pi]);
             }
           }
-          macro = { kind: 'fn', name, params, variadic, body: tokenize(bodySrc, errors, lineNo) };
+          macro = { kind: 'fn', name, params, variadic, body: trimWs(tokenize(bodySrc, errors, lineNo)) };
         } else {
-          macro = { kind: 'obj', name, body: tokenize(bodySrc, errors, lineNo) };
+          macro = { kind: 'obj', name, body: trimWs(tokenize(bodySrc, errors, lineNo)) };
         }
         commands.push({ type: 'define', name, macro, line: lineNo });
       } else if (undefM) {
@@ -208,8 +245,8 @@ function parseInput(source) {
         errors.push({ line: lineNo, msg: `#define is missing a macro name` });
       } else if (undefNoNameM) {
         errors.push({ line: lineNo, msg: `#undef is missing a macro name` });
-      } else if (/^#\s*(if|ifdef|ifndef|else|elif|elifdef|elifndef|endif|include|pragma|error|warning|line|embed)\b/.test(line)) {
-        errors.push({ line: lineNo, msg: `directive '#${line.match(/^#\s*(\w+)/)[1]}' not supported by this simulator` });
+      } else if (/^#\s*(if|ifdef|ifndef|else|elif|elifdef|elifndef|endif|include|pragma|error|warning|line|embed)\b/.test(directiveLine)) {
+        errors.push({ line: lineNo, msg: `directive '#${directiveLine.match(/^#\s*(\w+)/)[1]}' not supported by this simulator` });
       } else {
         errors.push({ line: lineNo, msg: `unrecognized directive: ${line}` });
       }
@@ -276,7 +313,26 @@ function parseInput(source) {
 }
 
 // ---------------------------------------------------------------------------
-// Preprocessor — iterative splicing, per-token hide sets (Prosser-style).
+// Preprocessor — context-stack expansion (cpplib / Clang style).
+//
+// Tokens are pulled lazily from a stack of contexts. Each context corresponds
+// to a macro's substituted body (or the original input for the bottom frame).
+// A macro is "active" while its context is on the stack; when the context
+// exhausts, the macro pops off and is eligible for expansion again. This is
+// the model gcc and clang use, and it's what enables Boost.PP-style EVAL/DEFER
+// recursion — a fresh `A` token produced by `A_()` after A's own context has
+// already popped is free to expand again.
+//
+// Per-token hide-sets still exist, but only to *persist paint* across scan
+// boundaries: when an active-macro identifier is emitted, we tag it with that
+// macro's name so subsequent rescans (e.g. of a prescanned arg substituted
+// into another body) keep treating it as painted.
+//
+// Argument prescan (§6.10.5.1 "completely macro-replaced before substitution")
+// runs as a fresh sub-expansion. Crucially, the OUTER active stack propagates
+// to the prescan — that prevents `M(x) ID(M(x))` from looping — but the macro
+// being invoked is NOT yet active, which is what lets the EVAL pattern's
+// nested same-named calls each expand in turn.
 // ---------------------------------------------------------------------------
 
 class Preprocessor {
@@ -287,91 +343,166 @@ class Preprocessor {
 
   record(/* kind, desc, tokens, marker */) { /* no-op for Node tests */ }
 
-  collectArgs(tokens, openIdx) {
-    const args = [];
-    const argPositions = [];
-    let cur = [];
-    let curStart = openIdx + 1;
-    let depth = 0;
-    let i = openIdx + 1;
-    while (i < tokens.length) {
-      const t = tokens[i];
-      if (t.value === '(') { depth++; cur.push(t); i++; continue; }
-      if (t.value === ')') {
-        if (depth === 0) {
-          if (cur.length > 0 || args.length > 0) {
-            args.push(cur);
-            argPositions.push({ start: curStart, end: i });
-          }
-          return [args, argPositions, i];
-        }
-        depth--; cur.push(t); i++; continue;
-      }
-      if (t.value === ',' && depth === 0) {
-        args.push(cur);
-        argPositions.push({ start: curStart, end: i });
-        cur = [];
-        i++;
-        curStart = i;
-        continue;
-      }
-      cur.push(t); i++;
-    }
-    return null;
+  process(initialTokens) {
+    return this._expand(initialTokens, null);
   }
 
-  process(initialTokens) {
-    let tokens = initialTokens.map(t => ({
-      ...t,
-      hide: t.hide ? new Set(t.hide) : new Set()
-    }));
+  // Expand `initialTokens`. `outerActive` is a Set of macro names treated as
+  // active in addition to whatever this expansion pushes onto its own stack
+  // (used for arg prescan to inherit the calling expansion's active set).
+  _expand(initialTokens, outerActive) {
+    const ctxs = [{
+      tokens: initialTokens.map(t => ({
+        ...t,
+        hide: t.hide ? new Set(t.hide) : new Set()
+      })),
+      pos: 0,
+      macro: null
+    }];
+    const output = [];
 
-    let i = 0;
+    const isActive = (name) => {
+      if (outerActive && outerActive.has(name)) return true;
+      for (const ctx of ctxs) if (ctx.macro === name) return true;
+      return false;
+    };
+
+    const popExhausted = () => {
+      while (ctxs.length > 0) {
+        const top = ctxs[ctxs.length - 1];
+        if (top.pos < top.tokens.length) return;
+        ctxs.pop();
+      }
+    };
+
+    const consume = () => {
+      popExhausted();
+      if (ctxs.length === 0) return null;
+      const top = ctxs[ctxs.length - 1];
+      return top.tokens[top.pos++];
+    };
+
+    // Look ahead for the next non-ws token across all live contexts WITHOUT
+    // popping — used to decide if a fn-like macro identifier is followed by
+    // '(' (possibly across context boundaries, e.g. F() expanding to G with
+    // the '(' coming from the surrounding source).
+    const peekNonWs = () => {
+      for (let ci = ctxs.length - 1; ci >= 0; ci--) {
+        const ctx = ctxs[ci];
+        for (let p = ctx.pos; p < ctx.tokens.length; p++) {
+          if (ctx.tokens[p].type !== 'ws') return ctx.tokens[p];
+        }
+      }
+      return null;
+    };
+
+    // Consume a fn-like macro's argument list (assumes peekNonWs() == '(').
+    // Spans context boundaries naturally, since consume() pops as it goes.
+    const collectArgsFromStream = () => {
+      while (true) {
+        popExhausted();
+        if (ctxs.length === 0) return null;
+        const top = ctxs[ctxs.length - 1];
+        const t = top.tokens[top.pos];
+        if (t.type === 'ws') { top.pos++; continue; }
+        if (t.value === '(') { top.pos++; break; }
+        return null;
+      }
+      const args = [];
+      let cur = [];
+      let depth = 0;
+      while (true) {
+        const t = consume();
+        if (t === null) return null;
+        if (t.value === '(') { depth++; cur.push(t); continue; }
+        if (t.value === ')') {
+          if (depth === 0) {
+            // Only push cur if it contains non-whitespace tokens OR we already
+            // have prior args. Pure-whitespace content between parens (e.g.
+            // F(\n)) is not a pp-token and must not count as an argument.
+            if (trimWs(cur).length > 0 || args.length > 0) args.push(cur);
+            return args;
+          }
+          depth--; cur.push(t); continue;
+        }
+        if (t.value === ',' && depth === 0) {
+          args.push(cur); cur = []; continue;
+        }
+        cur.push(t);
+      }
+    };
+
+    // Snapshot of macros active at the moment of an arg prescan. The macro
+    // currently being invoked is intentionally not yet on the stack.
+    const prescanActive = () => {
+      const s = new Set();
+      if (outerActive) for (const m of outerActive) s.add(m);
+      for (const ctx of ctxs) if (ctx.macro !== null) s.add(ctx.macro);
+      return s;
+    };
+
     let iters = 0;
-    const ITER_LIMIT = 100000;
+    const ITER_LIMIT = 10000000;
 
-    while (i < tokens.length) {
-      if (++iters > ITER_LIMIT) return tokens;
-      const tok = tokens[i];
+    while (true) {
+      if (++iters > ITER_LIMIT) break;
+      popExhausted();
+      if (ctxs.length === 0) break;
+      const tok = consume();
+      if (tok === null) break;
 
-      if (tok.type !== 'id' || tok.hide.has(tok.value) || !this.macros.has(tok.value)) {
-        i++;
+      if (tok.type !== 'id') { output.push(tok); continue; }
+
+      const name = tok.value;
+
+      // Painted by a prior expansion (hide-set carries paint across scans).
+      if (tok.hide && tok.hide.has(name)) { output.push(tok); continue; }
+      // Not a known macro.
+      if (!this.macros.has(name)) { output.push(tok); continue; }
+      // Currently being expanded — paint and emit so future rescans honor it.
+      if (isActive(name)) {
+        const newHide = new Set(tok.hide || []);
+        newHide.add(name);
+        output.push({ ...tok, hide: newHide });
         continue;
       }
 
-      const macro = this.macros.get(tok.value);
+      const macro = this.macros.get(name);
 
       if (macro.kind === 'obj') {
-        // §6.10.5.5: ## processing happens for both object-like and function-
-        // like bodies. Route obj-like bodies through substitute() with empty
-        // params so any ## (or stray #) in the body is handled.
+        // §6.10.5.5: route obj bodies through substitute() so '##' and any
+        // stray '#' are processed even though there are no params/args.
         const substituted = this.substitute(macro.body, [], [], []);
-        const newHide = new Set(tok.hide); newHide.add(macro.name);
-        const replacement = substituted.map(b => ({
-          ...b,
-          hide: new Set([...(b.hide || []), ...newHide])
-        }));
-        tokens = tokens.slice(0, i).concat(replacement, tokens.slice(i + 1));
+        ctxs.push({ tokens: substituted, pos: 0, macro: name });
         continue;
       }
 
-      let j = i + 1;
-      while (j < tokens.length && tokens[j].type === 'ws') j++;
-      if (j >= tokens.length || tokens[j].value !== '(') {
-        i++;
-        continue;
-      }
+      // Function-like: only invokes if the next non-ws token across the
+      // live contexts is '('. Otherwise emit the bare identifier.
+      const next = peekNonWs();
+      if (!next || next.value !== '(') { output.push(tok); continue; }
 
-      const argResult = this.collectArgs(tokens, j);
-      if (!argResult) return tokens;
-      const [rawArgs, , closeIdx] = argResult;
+      const rawArgs = collectArgsFromStream();
+      if (rawArgs === null) { output.push(tok); continue; }
 
       let args = rawArgs;
       if (args.length === 0 && macro.params.length > 0) args = [[]];
 
       const fixedCount = macro.params.length;
       const arityOk = macro.variadic ? args.length >= fixedCount : args.length === fixedCount;
-      if (!arityOk) { i = closeIdx + 1; continue; }
+      if (!arityOk) {
+        // Arity mismatch: emit the call verbatim (matches the prior splicing
+        // behavior which left such calls untouched). collectArgsFromStream
+        // already consumed the parens, so reconstruct the surface text.
+        output.push(tok);
+        output.push({ type: 'punct', value: '(', hide: new Set() });
+        for (let k = 0; k < rawArgs.length; k++) {
+          if (k > 0) output.push({ type: 'punct', value: ',', hide: new Set() });
+          for (const at of rawArgs[k]) output.push(at);
+        }
+        output.push({ type: 'punct', value: ')', hide: new Set() });
+        continue;
+      }
 
       let effectiveParams, allArgs;
       if (macro.variadic) {
@@ -392,34 +523,24 @@ class Preprocessor {
         allArgs = args;
       }
 
+      // §6.10.5.1 prescan: each arg is fully expanded by a fresh sub-expansion
+      // that inherits the current active set (so direct/indirect recursive
+      // uses still paint). The macro being invoked is intentionally absent
+      // from prescanActive(): same-named nested calls (EVAL pattern) need to
+      // expand within their own arg.
+      const subActive = prescanActive();
       const prescanned = [];
       for (let k = 0; k < allArgs.length; k++) {
         const subPP = new Preprocessor(this.macros);
-        const argInput = allArgs[k].map(t => ({ ...t, hide: t.hide ? new Set(t.hide) : new Set() }));
-        prescanned.push(subPP.process(argInput));
+        prescanned.push(subPP._expand(allArgs[k], subActive));
       }
 
       const substituted = this.substitute(macro.body, effectiveParams, allArgs, prescanned);
 
-      // §6.10.5.6 / Prosser fn-like rule: invocation's hide-set is the
-      // intersection of the name token's and the closing-paren's hide-sets,
-      // plus the macro itself. The intersection is what lets `M(...)`
-      // invocations whose `)` came from outside M's body escape M's hide
-      // (so the FOR_EACH / END_END chain trick works), while keeping cycle
-      // painting intact when `(` and `)` are both inside the outer body.
-      const closeHide = tokens[closeIdx].hide || new Set();
-      const newHide = new Set();
-      for (const h of tok.hide) if (closeHide.has(h)) newHide.add(h);
-      newHide.add(macro.name);
-      const final = substituted.map(t => ({
-        ...t,
-        hide: new Set([...(t.hide || []), ...newHide])
-      }));
-
-      tokens = tokens.slice(0, i).concat(final, tokens.slice(closeIdx + 1));
+      ctxs.push({ tokens: substituted, pos: 0, macro: name });
     }
 
-    return tokens;
+    return output;
   }
 
   substitute(body, params, args, prescanned) {
@@ -467,6 +588,26 @@ class Preprocessor {
       if (t.type === 'hash') {
         const j = nextNonWs(i + 1);
         if (j < body.length && body[j].type === 'id') {
+          // §6.10.3.6: # __VA_OPT__(content) — stringize the VA_OPT expansion as a unit
+          if (body[j].value === '__VA_OPT__') {
+            const k0 = nextNonWs(j + 1);
+            if (k0 < body.length && body[k0].value === '(') {
+              let depth = 1, k = k0 + 1;
+              while (k < body.length && depth > 0) {
+                if (body[k].value === '(') depth++;
+                else if (body[k].value === ')') { depth--; if (depth === 0) break; }
+                k++;
+              }
+              if (k < body.length && body[k].value === ')') {
+                const vaIdx = paramIdx('__VA_ARGS__');
+                const vaEmpty = vaIdx < 0 || trimWs(args[vaIdx]).length === 0;
+                const expanded = vaEmpty ? [] : this.substitute(body.slice(k0 + 1, k), params, args, prescanned);
+                result.push({ type: 'str', value: stringizeArg(expanded), hide: new Set() });
+                i = k + 1;
+                continue;
+              }
+            }
+          }
           const pi = paramIdx(body[j].value);
           if (pi >= 0) {
             result.push({ type: 'str', value: stringizeArg(args[pi]), hide: new Set() });
