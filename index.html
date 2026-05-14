@@ -1021,7 +1021,6 @@
                 <option value="undef">#undef</option>
                 <option value="rescan_subsequent">rescan into subsequent tokens</option>
             </select>
-            <button id="runBtn" class="primary">▸ expand</button>
         </div>
     </header>
 
@@ -1049,7 +1048,7 @@
                 </div>
                 <div class="input-status">
                     <span class="pos" id="caretPos">Ln 1, Col 1 · 0 chars</span>
-                    <span class="hint"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> to expand</span>
+                    <span class="hint">auto-expands · <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to expand now</span>
                 </div>
                 <div class="error-strip" id="errorStrip" aria-live="polite"></div>
                 <div class="pane-left-footer">
@@ -1074,7 +1073,7 @@
             <div class="empty-state" id="emptyState">
                 <div class="title">no expansion yet</div>
                 <div>paste macro definitions and an invocation on the left.<br>
-                    press <kbd>▸ expand</kbd> or <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to run.</div>
+                    expansion runs automatically, or press <kbd>Ctrl</kbd>+<kbd>Enter</kbd>.</div>
             </div>
             <div id="resultView" style="display:none; flex:1; flex-direction:column; min-height:0;">
                 <div class="step-header">
@@ -1858,7 +1857,6 @@
         const els = {
             input: document.getElementById('input'),
             inputCount: document.getElementById('inputCount'),
-            runBtn: document.getElementById('runBtn'),
             clearBtn: document.getElementById('clearBtn'),
             exampleSelect: document.getElementById('exampleSelect'),
             emptyState: document.getElementById('emptyState'),
@@ -2540,7 +2538,7 @@ F G_arg(7)`,
                 els.input.value = EXAMPLES[v];
                 renderEditor();
                 updateExpandedView();
-                run();
+                scheduleAutoRun();
             }
             els.exampleSelect.value = '0';
         });
@@ -2549,9 +2547,19 @@ F G_arg(7)`,
         // EVENT WIRING
         // ============================================================================
 
+        let autoRunTimer = null;
+        const scheduleAutoRun = () => {
+            if (autoRunTimer) clearTimeout(autoRunTimer);
+            autoRunTimer = setTimeout(() => { autoRunTimer = null; run(); }, 1000);
+        };
+        const cancelAutoRun = () => {
+            if (autoRunTimer) { clearTimeout(autoRunTimer); autoRunTimer = null; }
+        };
+
         els.input.addEventListener('input', () => {
             renderEditor();
             schedExpandedUpdate();
+            scheduleAutoRun();
         });
         els.input.addEventListener('scroll', syncScroll);
         els.input.addEventListener('keyup', updateCaret);
@@ -2559,8 +2567,8 @@ F G_arg(7)`,
         els.input.addEventListener('focus', () => els.editorStage.classList.add('focused'));
         els.input.addEventListener('blur', () => els.editorStage.classList.remove('focused'));
 
-        els.runBtn.addEventListener('click', run);
         els.clearBtn.addEventListener('click', () => {
+            cancelAutoRun();
             els.input.value = '';
             renderEditor();
             updateExpandedView();
@@ -2598,6 +2606,7 @@ F G_arg(7)`,
             if (document.activeElement === els.input) {
                 if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                     e.preventDefault();
+                    cancelAutoRun();
                     run();
                 }
                 return;
